@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=elec.gpu-es02.q
+#SBATCH --gres gpu:1 
+#SBATCH --error=slurm-%j.err
+#SBATCH --output=slurm-%j.out
+
+##CUDA='0'
+##CUDA_VISIBLE_DEVICES=$CUDA 
+##CUDA_VISIBLE_DEVICES="0" python train.py --dataset MNIST-10 --parts 784 --optim SGD 
+#CUDA_VISIBLE_DEVICES="0" python train.py --dataset MNIST-10 --parts 28 --optim SGD --lr 1e-2 
+#CUDA_VISIBLE_DEVICES="0" python train.py --dataset MNIST-10 --parts 1 --optim SGD --lr 1e-2 
+#CUDA_VISIBLE_DEVICES="0" python debug.py --dataset MNIST-10 --epochs 1 
+python train_lstm_1x128x10.py
