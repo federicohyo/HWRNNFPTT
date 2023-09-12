@@ -1,11 +1,13 @@
-IDIR =../include
 CC=gcc
-CFLAGS=-I$(IDIR)
-
-ODIR=obj
-LDIR =../lib
-
+CFLAGS=-I$(IDIR) -Wall
 LIBS=-lm
+
+
+SDIR=./src
+IDIR=./include
+ODIR=./obj
+LDIR=./lib
+
 
 _DEPS = headers.h lstm.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
@@ -14,10 +16,10 @@ _OBJ = lstm.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
-$(ODIR)/%.o: %.c $(DEPS)
+$(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-lstm: $(OBJ)
+run: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS) $(LIBS)
 
 .PHONY: clean
