@@ -12,7 +12,7 @@ LDIR=./lib
 _DEPS = headers.h lstm.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = lstm.o 
+_OBJ = lstm.o main.o 
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
@@ -25,4 +25,4 @@ run: $(OBJ)
 .PHONY: clean
 
 clean:
-	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ 
+	rm -f $(ODIR)/*.o *~ core $(INCDIR)/*~ ./run 
