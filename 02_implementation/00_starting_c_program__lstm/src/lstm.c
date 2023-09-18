@@ -58,7 +58,7 @@ FP l2_w_grad[L2S][L1S] = {0};
 FP l2_b_grad[L2S] = {0};
 
 
-FP xc[TS][BS][(L0S+L1S)] = {0};
+FP xc[TS+1][BS][(L0S+L1S)] = {0};
 
 
 FP l1_i_input[TS+1][BS][L1S] = {0};
@@ -166,7 +166,7 @@ void load_input_samples_to_xc(char file_name[])
     }
 
     for(int j=0; j<BS; j++)
-        for(int i=0; i<TS; i++)
+        for(int i=1; i<TS+1; i++)
             for(int k=0; k<L0S; k++) // the size of this dim is (L0S+L1S) though
             {
                 fscanf(ptr, "%f", &xc[i][j][k] );
@@ -246,11 +246,51 @@ void element_wise_mac(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col)
             mat_out[i*col + j] += mat_in_a[i*col + j] * mat_in_b[i*col + j];
 }
 
+void softmax(FP* dst, FP* src, int row, int col)
+{
+    /* Python code:
+    def softmax(x):  
+        e_x = np.exp(x - np.max(x))  # Subtracting the maximum value for numerical stability
+        return e_x / e_x.sum(axis=1,keepdims= True) 
+    */
+    FP tmp[L2S];
+    FP max;
+    FP sum;
+
+    for(int i=0; i<row; i++)
+    {
+        max = src[i*col + 0];
+        for(int j=1; j<col; j++)
+            if(src[i*col + j]>max)
+                max = src[i*col + j];
+        
+        sum = 0;
+        for(int j=0; j<col; j++)
+        {
+            tmp[j] = exp(src[i*col + j] - max);
+            sum += tmp[j];
+        }
+
+        for(int j=0; j<col; j++)
+            dst[i*col + j] = tmp[j]/sum;
+    }
+}
+
+
+void fill_l1_h_into_xc(int t)
+{
+    for(int i=0; i<BS; i++)
+        for(int j=L0S; j<(L0S+L1S); j++)
+            xc[t][i][j] = l1_h[t-1][i][j-L0S];
+}
 
 void forward(int seq_length)
 {
-    for(int t=1; t<seq_length; t++)
+    for(int t=1; t<=seq_length; t++)
     {
+        // python code: self.xc[t] = np.hstack(( np.squeeze(xt[:, t-sp:t-sp+1, :], axis=1),  self.l1_h[t-1]))
+        fill_l1_h_into_xc(t);
+
         // python code: self.l1_g_input[t] = np.dot(self.xc[t], self.param.l1_wg.T) + self.param.l1_bg
         mat_mul_b_T_add_bias( (FP*)&l1_g_input[t], (FP*)&xc[t], (FP*)l1_wg, BS, (L1S+L0S), L1S, (L1S+L0S), l1_bg);
         mat_mul_b_T_add_bias( (FP*)&l1_i_input[t], (FP*)&xc[t], (FP*)l1_wi, BS, (L1S+L0S), L1S, (L1S+L0S), l1_bi);
@@ -273,13 +313,23 @@ void forward(int seq_length)
 
 
         // python code: self.l2_h[t] = np.dot(self.l1_h[t], self.param.l2_w.T) + self.param.l2_b 
-        mat_mul_b_T_add_bias( (FP*)&l2_h[t], (FP*)&l1_h[t], (FP*)l2_w, BS, L1S, L2S, L1S, l1_bg);
-
+        mat_mul_b_T_add_bias( (FP*)&l2_h[t], (FP*)&l1_h[t], (FP*)l2_w, BS, L1S, L2S, L1S, l2_b);
+        softmax( (FP*)&l2_o[t], (FP*)&l2_h[t], BS, L2S);
 
     }
 }
 
-
+void print_network_out(int t)
+{
+    printf("Batch Size is %d\n", BS);
+    for(int i=0; i<BS; i++)
+    {
+        printf("Sample no. %d: ", i);
+        for(int j=0; j<L2S; j++)
+            printf("%.8f  ", l2_h[t][i][j]);
+        printf("\n");
+    }
+}
 
 
 

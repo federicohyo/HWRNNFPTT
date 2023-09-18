@@ -98,12 +98,15 @@ extern FP l2_b_grad[L2S];
 // L0S: input sample from the external
 // L1S: hidden states of the last time step
 //--------------------------------------
-extern FP xc[TS][BS][(L0S+L1S)];
+extern FP xc[TS+1][BS][(L0S+L1S)]; // range: 0 - TS
 
 
 //--------------------------------------
 // intermediate network states
 //--------------------------------------
+// l1_h and l1_s has the range: 0 - T, size T+1
+// the other states has the range: 1 -T, size T
+// but to make iterator more clear for now, they all have the size T+1
 extern FP l1_i_input[TS+1][BS][L1S];
 extern FP l1_f_input[TS+1][BS][L1S];
 extern FP l1_g_input[TS+1][BS][L1S];
@@ -166,6 +169,16 @@ void sigmoid_on_matrix(FP* mat_out, FP* mat_in, int row, int col);
 void element_wise_mul(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col);
 void element_wise_mac(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col);
 
+
+// row should be the batch size
+// col should be the number of classifications
+void softmax(FP* dst, FP* src, int row, int col);
+
+// xc is the concatenation of input and hidden states
+void fill_l1_h_into_xc(int t);
+
+// output the l2_o
+void print_network_out(int t);
 
 // Network forward path for [t] time steps
 void forward(int seq_length);
