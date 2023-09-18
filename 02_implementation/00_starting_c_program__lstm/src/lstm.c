@@ -61,20 +61,21 @@ FP l2_b_grad[L2S] = {0};
 FP xc[TS][BS][(L0S+L1S)] = {0};
 
 
-FP l1_i_input[TS][BS][L1S] = {0};
-FP l1_f_input[TS][BS][L1S] = {0};
-FP l1_g_input[TS][BS][L1S] = {0};
-FP l1_o_input[TS][BS][L1S] = {0};
+FP l1_i_input[TS+1][BS][L1S] = {0};
+FP l1_f_input[TS+1][BS][L1S] = {0};
+FP l1_g_input[TS+1][BS][L1S] = {0};
+FP l1_o_input[TS+1][BS][L1S] = {0};
 
-FP l1_i[TS][BS][L1S] = {0};
-FP l1_f[TS][BS][L1S] = {0};
-FP l1_g[TS][BS][L1S] = {0};
-FP l1_o[TS][BS][L1S] = {0};
-FP l1_s[TS][BS][L1S] = {0};
-FP l1_h[TS][BS][L1S] = {0};
+FP l1_i[TS+1][BS][L1S] = {0};
+FP l1_f[TS+1][BS][L1S] = {0};
+FP l1_g[TS+1][BS][L1S] = {0};
+FP l1_o[TS+1][BS][L1S] = {0};
+FP l1_s[TS+1][BS][L1S] = {0};
+FP l1_s_tanh[TS+1][BS][L1S] = {0};
+FP l1_h[TS+1][BS][L1S] = {0};
 
-FP l2_h[TS][BS][L2S] = {0};
-FP l2_o[TS][BS][L2S] = {0};
+FP l2_h[TS+1][BS][L2S] = {0};
+FP l2_o[TS+1][BS][L2S] = {0};
 
 
 void load_param_and_rm(FP* param, FP* rm, int row, int col, char file_dir[], char file_name[])
@@ -139,18 +140,18 @@ void initialize_all_param_and_rm()
     // srand(time(NULL));
     srand(0); // specify the seed so that the reuslt can be re-produced
 
-    initialize_param_and_rm(&l1_wi[0][0], &l1_wi_rm[0][0], L1S, (L1S + L0S), max_ini_v, min_ini_v);
-    initialize_param_and_rm(&l1_wf[0][0], &l1_wf_rm[0][0], L1S, (L1S + L0S), max_ini_v, min_ini_v);
-    initialize_param_and_rm(&l1_wg[0][0], &l1_wg_rm[0][0], L1S, (L1S + L0S), max_ini_v, min_ini_v);
-    initialize_param_and_rm(&l1_wo[0][0], &l1_wo_rm[0][0], L1S, (L1S + L0S), max_ini_v, min_ini_v);
+    initialize_param_and_rm( (FP*)l1_wi, (FP*)l1_wi_rm, L1S, (L1S + L0S), max_ini_v, min_ini_v);
+    initialize_param_and_rm( (FP*)l1_wf, (FP*)l1_wf_rm, L1S, (L1S + L0S), max_ini_v, min_ini_v);
+    initialize_param_and_rm( (FP*)l1_wg, (FP*)l1_wg_rm, L1S, (L1S + L0S), max_ini_v, min_ini_v);
+    initialize_param_and_rm( (FP*)l1_wo, (FP*)l1_wo_rm, L1S, (L1S + L0S), max_ini_v, min_ini_v);
 
-    initialize_param_and_rm(&l1_bi[0], &l1_bi_rm[0], 1, L1S, max_ini_v, min_ini_v);
-    initialize_param_and_rm(&l1_bf[0], &l1_bf_rm[0], 1, L1S, max_ini_v, min_ini_v);
-    initialize_param_and_rm(&l1_bg[0], &l1_bg_rm[0], 1, L1S, max_ini_v, min_ini_v);
-    initialize_param_and_rm(&l1_bo[0], &l1_bo_rm[0], 1, L1S, max_ini_v, min_ini_v);
+    initialize_param_and_rm( l1_bi, l1_bi_rm, 1, L1S, max_ini_v, min_ini_v);
+    initialize_param_and_rm( l1_bf, l1_bf_rm, 1, L1S, max_ini_v, min_ini_v);
+    initialize_param_and_rm( l1_bg, l1_bg_rm, 1, L1S, max_ini_v, min_ini_v);
+    initialize_param_and_rm( l1_bo, l1_bo_rm, 1, L1S, max_ini_v, min_ini_v);
 
-    initialize_param_and_rm(&l2_w[0][0], &l2_w_rm[0][0], L2S, L1S, max_ini_v, min_ini_v);
-    initialize_param_and_rm(&l2_b[0], &l2_b_rm[0], 1, L2S, max_ini_v, min_ini_v);
+    initialize_param_and_rm( (FP*)l2_w, (FP*)l2_w_rm, L2S, L1S, max_ini_v, min_ini_v);
+    initialize_param_and_rm( l2_b, l2_b_rm, 1, L2S, max_ini_v, min_ini_v);
 }
 
 
@@ -192,7 +193,7 @@ void mat_mul(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, int b_row, int
 
 void mat_mul_b_T_add_bias(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, int b_row, int b_col, FP* bias)
 {
-    if (a_col != b_col)
+    if (a_col != b_col) // source matrix B is to be transposed
     {
         printf("[mat_mul_b_T]: Size not matched!\n"); exit(1);
     }
@@ -231,19 +232,71 @@ void sigmoid_on_matrix(FP* mat_out, FP* mat_in, int row, int col)
 }
 
 
+void element_wise_mul(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col)
+{
+    for(int i=0; i<row; i++)
+        for(int j=0; j<col; j++)
+            mat_out[i*col + j] = mat_in_a[i*col + j] * mat_in_b[i*col + j];
+}
+
+void element_wise_mac(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col)
+{
+    for(int i=0; i<row; i++)
+        for(int j=0; j<col; j++)
+            mat_out[i*col + j] += mat_in_a[i*col + j] * mat_in_b[i*col + j];
+}
+
+
 void forward(int seq_length)
 {
-    for(int t=0; t<seq_length; t++)
+    for(int t=1; t<seq_length; t++)
     {
-        mat_mul_b_T_add_bias(&l1_g_input[t][0][0], &xc[t][0][0], &l1_wg[0][0], BS, (L1S+L0S), (L1S+L0S), L1S, &l1_bg[0]);
-        mat_mul_b_T_add_bias(&l1_i_input[t][0][0], &xc[t][0][0], &l1_wg[0][0], BS, (L1S+L0S), (L1S+L0S), L1S, &l1_bi[0]);
-        mat_mul_b_T_add_bias(&l1_f_input[t][0][0], &xc[t][0][0], &l1_wg[0][0], BS, (L1S+L0S), (L1S+L0S), L1S, &l1_bf[0]);
-        mat_mul_b_T_add_bias(&l1_o_input[t][0][0], &xc[t][0][0], &l1_wg[0][0], BS, (L1S+L0S), (L1S+L0S), L1S, &l1_bo[0]);
+        // python code: self.l1_g_input[t] = np.dot(self.xc[t], self.param.l1_wg.T) + self.param.l1_bg
+        mat_mul_b_T_add_bias( (FP*)&l1_g_input[t], (FP*)&xc[t], (FP*)l1_wg, BS, (L1S+L0S), L1S, (L1S+L0S), l1_bg);
+        mat_mul_b_T_add_bias( (FP*)&l1_i_input[t], (FP*)&xc[t], (FP*)l1_wi, BS, (L1S+L0S), L1S, (L1S+L0S), l1_bi);
+        mat_mul_b_T_add_bias( (FP*)&l1_f_input[t], (FP*)&xc[t], (FP*)l1_wf, BS, (L1S+L0S), L1S, (L1S+L0S), l1_bf);
+        mat_mul_b_T_add_bias( (FP*)&l1_o_input[t], (FP*)&xc[t], (FP*)l1_wo, BS, (L1S+L0S), L1S, (L1S+L0S), l1_bo);
 
-        tanhf_on_matrix(&l1_g[t][0][0], &l1_g_input[t][0][0], BS, L1S);
-        sigmoid_on_matrix(&l1_i[t][0][0], &l1_i_input[t][0][0], BS, L1S);
-        sigmoid_on_matrix(&l1_f[t][0][0], &l1_f_input[t][0][0], BS, L1S);
-        sigmoid_on_matrix(&l1_o[t][0][0], &l1_o_input[t][0][0], BS, L1S);
+        // python code: self.l1_g[t] = np.tanh(self.l1_g_input[t])
+        tanhf_on_matrix  ( (FP*)&l1_g[t], (FP*)&l1_g_input[t], BS, L1S);
+        sigmoid_on_matrix( (FP*)&l1_i[t], (FP*)&l1_i_input[t], BS, L1S);
+        sigmoid_on_matrix( (FP*)&l1_f[t], (FP*)&l1_f_input[t], BS, L1S);
+        sigmoid_on_matrix( (FP*)&l1_o[t], (FP*)&l1_o_input[t], BS, L1S);
+
+        // python code: self.l1_s[t] = self.l1_g[t] * self.l1_i[t] + self.l1_s[t-1] * self.l1_f[t]
+        element_wise_mul( (FP*)&l1_s[t], (FP*)&l1_g[t], (FP*)&l1_i[t], BS, L1S);
+        element_wise_mac( (FP*)&l1_s[t], (FP*)&l1_s[t-1], (FP*)&l1_f[t], BS, L1S);
+
+        // python code: self.l1_h[t] = np.tanh(self.l1_s[t]) * self.l1_o[t]
+        tanhf_on_matrix( (FP*)&l1_s_tanh[t], (FP*)l1_s[t], BS, L1S);
+        element_wise_mul( (FP*)&l1_h[t], (FP*)&l1_s_tanh[t], (FP*)&l1_o[t], BS, L1S);
+
+
+        // python code: self.l2_h[t] = np.dot(self.l1_h[t], self.param.l2_w.T) + self.param.l2_b 
+        mat_mul_b_T_add_bias( (FP*)&l2_h[t], (FP*)&l1_h[t], (FP*)l2_w, BS, L1S, L2S, L1S, l1_bg);
+
 
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -104,22 +104,23 @@ extern FP xc[TS][BS][(L0S+L1S)];
 //--------------------------------------
 // intermediate network states
 //--------------------------------------
-extern FP l1_i_input[TS][BS][L1S];
-extern FP l1_f_input[TS][BS][L1S];
-extern FP l1_g_input[TS][BS][L1S];
-extern FP l1_o_input[TS][BS][L1S];
+extern FP l1_i_input[TS+1][BS][L1S];
+extern FP l1_f_input[TS+1][BS][L1S];
+extern FP l1_g_input[TS+1][BS][L1S];
+extern FP l1_o_input[TS+1][BS][L1S];
 
 
-extern FP l1_i[TS][BS][L1S];
-extern FP l1_f[TS][BS][L1S];
-extern FP l1_g[TS][BS][L1S];
-extern FP l1_o[TS][BS][L1S];
-extern FP l1_s[TS][BS][L1S];
-extern FP l1_h[TS][BS][L1S];
+extern FP l1_i[TS+1][BS][L1S];
+extern FP l1_f[TS+1][BS][L1S];
+extern FP l1_g[TS+1][BS][L1S];
+extern FP l1_o[TS+1][BS][L1S];
+extern FP l1_s[TS+1][BS][L1S];
+extern FP l1_s_tanh[TS+1][BS][L1S];
+extern FP l1_h[TS+1][BS][L1S];
 
 
-extern FP l2_h[TS][BS][L2S];
-extern FP l2_o[TS][BS][L2S];
+extern FP l2_h[TS+1][BS][L2S];
+extern FP l2_o[TS+1][BS][L2S];
 
 
 
@@ -154,11 +155,16 @@ void mat_mul_b_T_add_bias(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, i
 // float tanh function [tanhf] for the scalar is provided in  library <math.h> 
 void tanhf_on_matrix(FP* mat_out, FP* mat_in, int row, int col);
 
+
 // sigmoid function on scalar
 FP sigmoid(FP x);
-
 // sigmoid function on matrix
 void sigmoid_on_matrix(FP* mat_out, FP* mat_in, int row, int col);
+
+
+// element-wise MUL/MAC (Multiply and Acummulate) on arrays/matrices of the same size 
+void element_wise_mul(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col);
+void element_wise_mac(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col);
 
 
 // Network forward path for [t] time steps
