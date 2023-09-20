@@ -100,6 +100,8 @@ extern FP l2_b_grad[L2S];
 //--------------------------------------
 extern FP xc[TS+1][BS][(L0S+L1S)]; // range: 0 - TS
 
+// the label/expected output
+extern FP label[BS][L2S];
 
 //--------------------------------------
 // intermediate network states
@@ -125,10 +127,31 @@ extern FP l1_h[TS+1][BS][L1S];
 extern FP l2_h[TS+1][BS][L2S];
 extern FP l2_o[TS+1][BS][L2S];
 
+//--------------------------------------
+// intermediate gradients
+// variables used in backward path
+//--------------------------------------
+extern FP d_l2_h[BS][L2S];
+
+extern FP d_l1_h[BS][L1S];
+extern FP d_l1_s[BS][L1S];
+extern FP d_l1_i[BS][L1S];
+extern FP d_l1_f[BS][L1S];
+extern FP d_l1_g[BS][L1S];
+extern FP d_l1_o[BS][L1S];
+
+extern FP di_input[BS][L1S];
+extern FP df_input[BS][L1S];
+extern FP dg_input[BS][L1S];
+extern FP do_input[BS][L1S];
 
 
-// FUNCTIONS
 
+
+//--------------------------------------
+// FUNCTIONS DECLARATION
+//--------------------------------------
+void print_static_memory_usage();
 
 // load parameters used by PyTorch model from external files
 // case 1: use the same initialization as PyTorch model
@@ -183,7 +206,16 @@ void print_network_out(int t);
 // Network forward path for [t] time steps
 void forward(int seq_length);
 
+// matrix multiplication with the first source matrix to be transposed
+// the resulting matrix will be averaged over Batch Size
+void mat_mul_a_T_average(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, int b_row, int b_col, int n_samples);
 
+
+void mat2vec_avr_sequeeze(FP* dst, FP* src, int src_row, int src_col);
+void find_ds(int t, int row, int col);
+
+void backward(int t, int trunc_h, int trunc_s);
+void apply_diff();
 
 
 #endif//_LSTM_H_

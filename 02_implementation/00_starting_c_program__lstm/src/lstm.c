@@ -59,7 +59,7 @@ FP l2_b_grad[L2S] = {0};
 
 
 FP xc[TS+1][BS][(L0S+L1S)] = {0};
-
+FP label[BS][L2S] = {0};
 
 FP l1_i_input[TS+1][BS][L1S] = {0};
 FP l1_f_input[TS+1][BS][L1S] = {0};
@@ -73,9 +73,42 @@ FP l1_o[TS+1][BS][L1S] = {0};
 FP l1_s[TS+1][BS][L1S] = {0};
 FP l1_s_tanh[TS+1][BS][L1S] = {0};
 FP l1_h[TS+1][BS][L1S] = {0};
-
 FP l2_h[TS+1][BS][L2S] = {0};
 FP l2_o[TS+1][BS][L2S] = {0};
+
+
+FP d_l2_h[BS][L2S] = {0};
+FP d_l1_h[BS][L1S] = {0};
+FP d_l1_s[BS][L1S] = {0};
+FP d_l1_i[BS][L1S] = {0};
+FP d_l1_f[BS][L1S] = {0};
+FP d_l1_g[BS][L1S] = {0};
+FP d_l1_o[BS][L1S] = {0};
+FP di_input[BS][L1S] = {0};
+FP df_input[BS][L1S] = {0};
+FP dg_input[BS][L1S] = {0};
+FP do_input[BS][L1S] = {0};
+
+
+void print_static_memory_usage()
+{
+    int sum=0;
+    int mem_params=0;
+    int mem_states=0;
+    int mem_grad=0;
+
+    mem_params = 4* (4*(sizeof(l1_wi) + sizeof(l1_bi)) + sizeof(l2_w) + sizeof(l2_b));
+    mem_states = sizeof(xc) + sizeof(l1_i_input)*4 + sizeof(l1_i)*7 + sizeof(l2_h)*2;
+    mem_grad = sizeof(d_l2_h) + sizeof(d_l1_h)*10;
+    sum = mem_params + mem_states +mem_grad;
+
+    printf(" \n---------- Memory Usage (static) ----------\n");
+    printf("Network parameters:\t %.2f MB (%d Bytes)\n", ((float)mem_params/1024/1024), mem_params);
+    printf("Network states:\t\t %.2f MB (%d Bytes) \n", ((float)mem_states/1024/1024), mem_states);
+    printf("Intermediate gradients:\t %.2f MB (%d Bytes) \n", ((float)mem_grad/1024/1024), mem_grad);
+    printf("Total:\t\t\t %.2f MB (%d Bytes) \n", ((float)sum/1024/1024), sum);
+    printf(" -------------------------------------------\n");
+}
 
 
 void load_param_and_rm(FP* param, FP* rm, int row, int col, char file_dir[], char file_name[])
@@ -174,6 +207,7 @@ void load_input_samples_to_xc(char file_name[])
             }
     
     // printf("%d\n", count);
+    fclose(ptr);
 }
 
 
@@ -332,10 +366,86 @@ void print_network_out(int t)
 }
 
 
+void element_wise_sub(FP* dst, FP* src1, FP* src2, int row, int col)
+{
+    for(int i=0; i<row; i++)
+        for(int j=0; j<col; j++)
+            dst[i*col + j] = src1[i*col + j] - src2[i*col + j];
+}
 
 
+void mat_mul_a_T_average(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, int b_row, int b_col, int n_samples)
+{
+    if (a_row != b_row) // source matrix A is to be transposed
+    {
+        printf("[mat_mul]: Size not matched!\n"); exit(1);
+    }
+
+    for(int i=0; i<a_col; i++)
+        for(int j=0; j<b_col; j++)
+        {
+            for(int k=0; k<a_row; k++)
+                dst[i*b_col + j] += src_a[i + k*a_col] * src_b[j + k*b_col];
+
+            dst[i*b_col + j] /= n_samples;
+        }
+}
+
+void mat2vec_avr_sequeeze(FP* dst, FP* src, int src_row, int src_col)
+{
+    for(int j=0; j<src_col; j++)
+    {
+        for(int i=0; i<src_row; i++)
+            dst[j] += src[i*src_col + j];
+
+        dst[j] /= src_row;
+    }
+}
+
+void find_ds(int t, int row, int col)
+{
+    // find the derivative of Loss w.r.t l1_s at time step t
+    //python code: self.ds = self.state.l1_o[h_step] * (1 - (np.tanh(self.state.l1_s[h_step]))**2 ) *self.dl1_h
+
+    for(int i=0; i<row; i++)
+        for(int j=0; j<col; j++)
+            d_l1_s[i][j] = l1_o[t][i][j] * (1 - (l1_s_tanh[t][i][j])*(l1_s_tanh[t][i][j]) ) * d_l1_h[i][j];
+}
 
 
+// Backpropagation from the given time step t
+void backward(int t, int trunc_h, int trunc_s)
+{
+    int h_ep = 0; // earliest point(time step) to end up backtracking for l1_h
+    int s_ep = 0; // earliest point(time step) to end up backtracking for l1_s
+
+    element_wise_sub( (FP*)d_l2_h, (FP*)&l2_o[t], (FP*)label, BS, L2S);
+
+    // python code: self.param.l2_w_diff =  (np.dot(self.dl2_h.T, self.state.l1_h[t]))/self.n_samples
+    mat_mul_a_T_average( (FP*)l2_w_grad, (FP*)d_l2_h, (FP*)&l1_h[t], BS, L2S, BS, L1S, BS);
+
+    // python code: self.param.l2_b_diff = (self.dl2_h.sum(axis=0))/self.n_samples # (10) = (200,10) 
+    mat2vec_avr_sequeeze( (FP*)l2_b_grad, (FP*)d_l2_h, BS, L2S);
+
+    // python code: self.dl1_h = np.dot(self.dl2_h, self.param.l2_w) # (200,128) = (200,10).(10, 128)
+    mat_mul( (FP*)d_l1_h, (FP*)d_l2_h, (FP*)l2_w, BS, L2S, L2S, L1S);
+
+    h_ep = (t-trunc_h>0) ? t-trunc_h : 0;
+    for(int h_step=t; h_step>h_ep; h_step--)
+    {
+        find_ds(h_step, BS, L1S);
+
+        //python code: self.do = np.tanh(self.state.l1_s[h_step]) * self.dl1_h
+        element_wise_mul( (FP*)d_l1_o, (FP*)&l1_s_tanh[h_step], (FP*)d_l1_h, BS, L1S);
+    }
+
+}
+
+
+void apply_diff()
+{
+
+}
 
 
 

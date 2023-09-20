@@ -22,6 +22,7 @@ void case1()
 
 int main()
 {
+	print_static_memory_usage();
 	case1();
 	// for(int i=0; i<10; i++)
 		// printf("%.8f ", l1_wo[0][i]);
