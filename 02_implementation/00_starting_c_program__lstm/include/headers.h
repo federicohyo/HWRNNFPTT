@@ -26,6 +26,10 @@ typedef float FP;
 #define BS 5    // batch size
 
 
-
+// --------------------------------
+// define the hyperparameters 
+// --------------------------------
+#define LR 0.01
+#define ALPHA 0.1
 
 #endif//_HEADERS_H_ 

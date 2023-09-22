@@ -215,7 +215,7 @@ void mat2vec_avr_sequeeze(FP* dst, FP* src, int src_row, int src_col);
 void find_ds(int t, int row, int col);
 
 void backward(int t, int trunc_h, int trunc_s);
-void apply_diff();
 
 
+void optimizer_and_zero_grad(int fptt_option);
 #endif//_LSTM_H_
