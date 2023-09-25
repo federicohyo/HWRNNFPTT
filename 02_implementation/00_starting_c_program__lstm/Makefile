@@ -9,10 +9,10 @@ ODIR=./obj
 LDIR=./lib
 
 
-_DEPS = headers.h lstm.h
+_DEPS = headers.h matrix_ops.h lstm.h caselist.h 
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = lstm.o main.o 
+_OBJ = matrix_ops.o lstm.o caselist.o main.o 
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
