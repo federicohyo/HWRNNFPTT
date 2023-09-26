@@ -151,6 +151,7 @@ extern FP do_input[BS][L1S];
 //--------------------------------------
 // FUNCTIONS DECLARATION
 //--------------------------------------
+void print_basic_config();
 void print_static_memory_usage();
 
 // load parameters used by PyTorch model from external files
@@ -180,4 +181,5 @@ void backward(int t, int trunc_h, int trunc_s);
 
 void optimizer_and_zero_grad(int fptt_option);
 
+void print_updated_params_partly();
 #endif//_LSTM_H_

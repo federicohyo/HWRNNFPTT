@@ -3,6 +3,7 @@
 
 int main()
 {
+	print_basic_config();
 	print_static_memory_usage();
 	case1();
 	

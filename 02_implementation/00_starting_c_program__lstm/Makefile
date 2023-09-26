@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-I$(IDIR) -Wall
+CFLAGS=-I$(IDIR) -Wall -D BY_ROW_BPTT #BY_PIXEL_FPTT_K_56
 LIBS=-lm
 
 

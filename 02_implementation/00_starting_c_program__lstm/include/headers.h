@@ -17,12 +17,36 @@ typedef float FP;
 // --------------------------------
 // define the network size
 // --------------------------------
-#define L0S (28)
-#define L1S (128)
 #define L2S (10)
+#define L1S (128)
+
+#define K 0 // default FPTT is disabled
+#ifdef BY_ROW_BPTT
+    #define L0S (28)
+    #define TS 28   // time steps, i.e. the length of sequences
+#endif
+
+#ifdef BY_PIXEL_BPTT
+    #define L0S (1)
+    #define TS 784   // time steps, i.e. the length of sequences
+#endif
+
+#ifdef BY_PIXEL_FPTT_K_28
+    #define L0S (1)
+    #undef K
+    #define K 28
+    #define TS 28   // time steps, i.e. the length of subsequences, T/K
+#endif
+
+#ifdef BY_PIXEL_FPTT_K_56
+    #define L0S (1)
+    #undef K
+    #define K 56
+    #define TS 14   // time steps, i.e. the length of subsequences, T/K
+#endif
 
 
-#define TS 28   // time steps, i.e. the length of subsequences
+
 #define BS 5    // batch size
 
 

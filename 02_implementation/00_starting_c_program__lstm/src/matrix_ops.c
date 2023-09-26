@@ -1,5 +1,5 @@
 /*
-    In the directory include/mat_and_arr_ops.h
+    In the directory include/matrix_ops.h
     see data/function declaration 
 */
 #include "matrix_ops.h"
