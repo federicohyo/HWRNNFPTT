@@ -10,6 +10,8 @@
 -------------------------------------- */
 void mat_mul(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, int b_row, int b_col)
 {
+    FP tmp=0;
+
     if (a_col != b_row)
     {
         printf("[mat_mul]: Size not matched!\n"); exit(1);
@@ -17,12 +19,19 @@ void mat_mul(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, int b_row, int
 
     for(int i=0; i<a_row; i++)
         for(int j=0; j<b_col; j++)
+        {
             for(int k=0; k<a_col; k++)
-                dst[i*b_col + j] += src_a[i*a_col + k] * src_b[j + k*b_col];
+                tmp += src_a[i*a_col + k] * src_b[j + k*b_col];
+
+            dst[i*b_col + j] = tmp;
+            tmp=0;
+        }
 }
 
 void mat_mul_b_T_add_bias(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, int b_row, int b_col, FP* bias)
 {
+    FP tmp=0;
+
     if (a_col != b_col) // source matrix B is to be transposed
     {
         printf("[mat_mul_b_T]: Size not matched!\n"); exit(1);
@@ -30,8 +39,13 @@ void mat_mul_b_T_add_bias(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, i
 
     for(int i=0; i<a_row; i++)
         for(int j=0; j<b_row; j++)
+        {
             for(int k=0; k<a_col; k++)
-                dst[i*b_row + j] += src_a[i*a_col + k] * src_b[j*a_col + k];
+                tmp += src_a[i*a_col + k] * src_b[j*a_col + k];
+
+            dst[i*b_row + j] = tmp;
+            tmp = 0;
+        }
 
 
     for(int i=0; i<a_row; i++)
@@ -45,7 +59,7 @@ void mat_mul_a_T_average(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, in
 
     if (a_row != b_row) // source matrix A is to be transposed
     {
-        printf("[mat_mul]: Size not matched!\n"); exit(1);
+        printf("[mat_mul_a_T_average]: Size not matched!\n"); exit(1);
     }
 
     for(int i=0; i<a_col; i++)

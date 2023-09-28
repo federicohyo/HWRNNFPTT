@@ -98,6 +98,7 @@ extern FP l2_b_grad[L2S];
 // L0S: input sample from the external
 // L1S: hidden states of the last time step
 //--------------------------------------
+extern FP samples[BS][NUM_OF_P];
 extern FP xc[TS+1][BS][(L0S+L1S)]; // range: 0 - TS
 
 // the label/expected output
@@ -167,6 +168,14 @@ void initialize_all_param_and_rm();
 
 // load input samples from external files
 void load_input_samples_to_xc(char file_name[]);
+void load_input_samples(char file_name[]);
+
+// fill xc with data necessary for forward
+// fill xc with a fraction of input samples of TS step (a piece)
+void load_sub_seq_to_xc(int k_idx);
+
+// link network states: l1_h[0] = l1_h[TS], if k_idx > 0
+void relay_network_states();
 
 // xc is the concatenation of input and hidden states
 void fill_l1_h_into_xc(int t);
@@ -181,5 +190,5 @@ void backward(int t, int trunc_h, int trunc_s);
 
 void optimizer_and_zero_grad(int fptt_option);
 
-void print_updated_params_partly();
+void print_params_partly();
 #endif//_LSTM_H_

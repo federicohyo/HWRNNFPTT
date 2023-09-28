@@ -21,34 +21,27 @@ typedef float FP;
 #define L1S (128)
 
 #define K 0 // default FPTT is disabled
-#ifdef BY_ROW_BPTT
+#ifdef MNIST_OFFLINE_BY_ROWS 
     #define L0S (28)
     #define TS 28   // time steps, i.e. the length of sequences
 #endif
 
-#ifdef BY_PIXEL_BPTT
+#ifdef MNIST_OFFLINE_BY_PIXELS
     #define L0S (1)
     #define TS 784   // time steps, i.e. the length of sequences
 #endif
 
-#ifdef BY_PIXEL_FPTT_K_28
+#ifdef MNIST_ONLINE_BY_PIXELS
     #define L0S (1)
     #undef K
     #define K 28
-    #define TS 28   // time steps, i.e. the length of subsequences, T/K
-#endif
-
-#ifdef BY_PIXEL_FPTT_K_56
-    #define L0S (1)
-    #undef K
-    #define K 56
-    #define TS 14   // time steps, i.e. the length of subsequences, T/K
+    #define TS 28   // time steps, i.e. the length of subsequences, NUM_OF_P/K
 #endif
 
 
 
 #define BS 5    // batch size
-
+#define NUM_OF_P 784 // number of pixels in an input image
 
 // --------------------------------
 // define the hyperparameters 

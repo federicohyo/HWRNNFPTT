@@ -58,6 +58,7 @@ FP l2_w_grad[L2S][L1S] = {0};
 FP l2_b_grad[L2S] = {0};
 
 
+FP samples[BS][NUM_OF_P];
 FP xc[TS+1][BS][(L0S+L1S)] = {0};
 FP label[BS][L2S] = {0};
 
@@ -98,7 +99,7 @@ void print_basic_config()
     printf("learning rate: %f\n", LR);
     printf("Optimizer is SGD ");
     if(K)
-        printf("and FPTT is enabled, alpha: %f\n", ALPHA);
+        printf("and FPTT is enabled, K is %d, alpha: %f\n", K, ALPHA);
     else
         printf("using BPTT only, FPTT is disabled\n");
 }
@@ -110,13 +111,16 @@ void print_static_memory_usage()
     int mem_params=0;
     int mem_states=0;
     int mem_grad=0;
+    int mem_in_dat=0;
 
+    mem_in_dat = sizeof(samples);
     mem_params = 4* (4*(sizeof(l1_wi) + sizeof(l1_bi)) + sizeof(l2_w) + sizeof(l2_b));
     mem_states = sizeof(xc) + sizeof(l1_i_input)*4 + sizeof(l1_i)*7 + sizeof(l2_h)*2;
     mem_grad = sizeof(d_l2_h) + sizeof(d_l1_h)*10;
     sum = mem_params + mem_states +mem_grad;
 
     printf(" \n---------- Memory Usage (static) ----------\n");
+    printf("Network Input:\t %.2f MB (%d Bytes)\n", ((float)mem_in_dat/1024/1024), mem_in_dat);
     printf("Network parameters:\t %.2f MB (%d Bytes)\n", ((float)mem_params/1024/1024), mem_params);
     printf("Network states:\t\t %.2f MB (%d Bytes) \n", ((float)mem_states/1024/1024), mem_states);
     printf("Intermediate gradients:\t %.2f MB (%d Bytes) \n", ((float)mem_grad/1024/1024), mem_grad);
@@ -223,6 +227,41 @@ void load_input_samples_to_xc(char file_name[])
     // printf("%d\n", count);
     fclose(ptr);
 }
+
+void load_input_samples(char file_name[])
+{
+    FILE* ptr = fopen(file_name, "r");
+    if (ptr == NULL) 
+    {
+        printf("[load_input_samples]: No such file: %s.\n", file_name);    exit(1);
+    }
+
+    for(int i=0; i<BS; i++)
+        for(int j=0; j<NUM_OF_P; j++)
+            fscanf(ptr, "%f", &samples[i][j] );
+
+    fclose(ptr);
+}
+
+void load_sub_seq_to_xc(int k_idx)
+{
+    for(int i=0; i<BS; i++)
+        for(int j=1; j<=TS; j++)
+            xc[j][i][0] = samples[i][k_idx*TS + j-1];
+
+    /* todo: This index can be improved to be more applicable, i.e. for CIFAR-10 */
+}
+
+void relay_network_states()
+{
+    for(int i=0; i<BS; i++)
+        for(int k=0; k<L1S; k++)
+        {
+            l1_h[0][i][k] = l1_h[TS][i][k]; 
+            l1_s[0][i][k] = l1_s[TS][i][k]; 
+        }
+}
+
 
 void fill_l1_h_into_xc(int t)
 {
@@ -403,7 +442,7 @@ void backward(int t, int trunc_h, int trunc_s)
         // python: self.param.l1_bo_diff += (self.do_input.sum(axis=0)) /self.n_samples # (128) = (200,128)
         mat2vec_avr_sequeeze( (FP*)l1_bo_grad, (FP*)do_input, BS, L1S);
             
-        dbg_l1_w_b_o(h_step);
+        // dbg_l1_w_b_o(h_step);
 
         // python: s_ep = 0 if trunc_s is None else max(0, h_step -trunc_s)
         s_ep = (h_step-trunc_s>0) ? h_step-trunc_s : 0;
@@ -508,9 +547,8 @@ void optimizer_and_zero_grad(int fptt_option)
     }
 }
 
-void print_updated_params_partly()
+void print_params_partly()
 {
-	printf("\nprint updated parameters\n");
 	printf("l2_w: ");
 	for(int i=0; i<10; i++)
 		printf("%.8f ", l2_w[0][i]);
