@@ -70,6 +70,7 @@ void learning_mnist_online(char way_of_processing[], char dir_load_param[], char
 	}
 
 	load_all_param_and_rm(param_dir);
+	// initialize_all_param_and_rm();
 	load_input_samples("./data/input/samples.txt");
 	print_params_partly();
 
@@ -77,19 +78,25 @@ void learning_mnist_online(char way_of_processing[], char dir_load_param[], char
 	// the original sequence is seen as
 	// K subsequences of TS (length)
 	// T = TS * K
+
+	clock_t begin = clock();
 	for(int i=0; i<K; i++)
 	{
 		load_sub_seq_to_xc(i);
 		relay_network_states();
 		forward(TS);
 
-		backward(TS, TS, 3);
+		backward(TS, TS, 2);
 		optimizer_and_zero_grad(if_calculate_regularizer); 
 	}
+	clock_t end = clock();
+	double time_spent = (double)(end - begin)/ CLOCKS_PER_SEC ;
 
 	print_network_out(TS);
 	printf("\nprint updated parameters\n");
 	print_params_partly();
+
+	printf("Latency: %.2f\n", time_spent);
 }
 
 

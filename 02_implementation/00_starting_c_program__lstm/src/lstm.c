@@ -290,12 +290,12 @@ void forward(int seq_length)
         sigmoid_on_matrix( (FP*)&l1_o[t], (FP*)&l1_o_input[t], BS, L1S);
 
         // python code: self.l1_s[t] = self.l1_g[t] * self.l1_i[t] + self.l1_s[t-1] * self.l1_f[t]
-        element_wise_mul( (FP*)&l1_s[t], (FP*)&l1_g[t], (FP*)&l1_i[t], BS, L1S);
+        element_wise_mul( (FP*)&l1_s[t], (FP*)&l1_g[t], (FP*)&l1_i[t], BS, L1S, "forward_pass");
         element_wise_mac( (FP*)&l1_s[t], (FP*)&l1_s[t-1], (FP*)&l1_f[t], BS, L1S);
 
         // python code: self.l1_h[t] = np.tanh(self.l1_s[t]) * self.l1_o[t]
         tanhf_on_matrix( (FP*)&l1_s_tanh[t], (FP*)l1_s[t], BS, L1S);
-        element_wise_mul( (FP*)&l1_h[t], (FP*)&l1_s_tanh[t], (FP*)&l1_o[t], BS, L1S);
+        element_wise_mul( (FP*)&l1_h[t], (FP*)&l1_s_tanh[t], (FP*)&l1_o[t], BS, L1S, "forward_pass");
 
 
         // python code: self.l2_h[t] = np.dot(self.l1_h[t], self.param.l2_w.T) + self.param.l2_b 
@@ -328,6 +328,7 @@ void print_network_out(int t)
     }
 }
 
+// helper function: used only in [backward]
 void find_ds(int t, int row, int col)
 {
     // find the derivative of Loss w.r.t l1_s at time step t
@@ -336,8 +337,14 @@ void find_ds(int t, int row, int col)
     for(int i=0; i<row; i++)
         for(int j=0; j<col; j++)
             d_l1_s[i][j] = l1_o[t][i][j] * (1 - (l1_s_tanh[t][i][j])*(l1_s_tanh[t][i][j]) ) * d_l1_h[i][j];
+
+
+    // non-functional: operation counter below
+    bp_mul += row*col*3;
+    bp_sub += row*col;
 }
 
+// helper function: used only in [backward]
 void find_d_l1_ifgo_input(FP* dst, FP* src_a, FP* src_b, int row, int col, int check_g)
 {
     int idx=0;
@@ -361,8 +368,17 @@ void find_d_l1_ifgo_input(FP* dst, FP* src_a, FP* src_b, int row, int col, int c
             }
     }
 
+
+    // non-functional: operation counter below
+    bp_mul += row*col*2;
+    bp_sub += row*col;
+
+    // index calculation
+    index_mul += row*col;
+    index_add += row*col;
 }
 
+// helper function: used only in [backward]
 void update_d_l1_h()
 {
     FP tmp = 0;
@@ -376,6 +392,14 @@ void update_d_l1_h()
             d_l1_h[i][j-L0S] = tmp;
             tmp = 0;
         }
+
+
+    // non-functional: operation counter below
+    bp_mul += (BS)*(L1S)*(L1S)*4;
+    bp_add += (BS)*((L1S)-1)*(L1S)*4;
+
+    // index calculation
+    index_sub += BS *L1S;
 }
 
 void dbg_l1_w_b_o(int t)
@@ -410,6 +434,7 @@ void dbg_l1_w_b_o(int t)
 // Backpropagation from the given time step t
 void backward(int t, int trunc_h, int trunc_s)
 {
+    static int cnt=0;
     int h_ep = 0; // earliest point(time step) to end up backtracking for l1_h
     int s_ep = 0; // earliest point(time step) to end up backtracking for l1_s
 
@@ -427,10 +452,11 @@ void backward(int t, int trunc_h, int trunc_s)
     h_ep = (t-trunc_h>0) ? t-trunc_h : 0;
     for(int h_step=t; h_step>h_ep; h_step--)
     {
+        cnt++;
         find_ds(h_step, BS, L1S);
 
         // python: self.do = np.tanh(self.state.l1_s[h_step]) * self.dl1_h
-        element_wise_mul( (FP*)d_l1_o, (FP*)&l1_s_tanh[h_step], (FP*)d_l1_h, BS, L1S);
+        element_wise_mul( (FP*)d_l1_o, (FP*)&l1_s_tanh[h_step], (FP*)d_l1_h, BS, L1S, "backward_pass");
 
         // python: self.do_input = sigmoid_derivative(self.state.l1_o[h_step]) * self.do 
         find_d_l1_ifgo_input( (FP*)do_input, (FP*)&l1_o[h_step], (FP*)d_l1_o, BS, L1S, 0);
@@ -450,10 +476,9 @@ void backward(int t, int trunc_h, int trunc_s)
         // python: for s_step in np.arange(s_ep, h_step+1)[::-1]:
         for(int s_step=h_step; s_step>s_ep; s_step--)
         {
-            // self.dg = self.state.l1_i[s_step] * self.ds
-            element_wise_mul( (FP*)d_l1_g, (FP*)&l1_i[s_step], (FP*)d_l1_s, BS, L1S);
-            element_wise_mul( (FP*)d_l1_i, (FP*)&l1_g[s_step], (FP*)d_l1_s, BS, L1S);
-            element_wise_mul( (FP*)d_l1_f, (FP*)&l1_s[s_step-1], (FP*)d_l1_s, BS, L1S);
+            element_wise_mul( (FP*)d_l1_g, (FP*)&l1_i[s_step], (FP*)d_l1_s, BS, L1S, "backward_pass");
+            element_wise_mul( (FP*)d_l1_i, (FP*)&l1_g[s_step], (FP*)d_l1_s, BS, L1S, "backward_pass");
+            element_wise_mul( (FP*)d_l1_f, (FP*)&l1_s[s_step-1], (FP*)d_l1_s, BS, L1S, "backward_pass");
 
             // self.di_input = sigmoid_derivative(self.state.l1_i[s_step]) * self.di 
             find_d_l1_ifgo_input( (FP*)di_input, (FP*)&l1_i[s_step], (FP*)d_l1_i, BS, L1S, 0);
@@ -470,13 +495,18 @@ void backward(int t, int trunc_h, int trunc_s)
             mat2vec_avr_sequeeze( (FP*)l1_bg_grad, (FP*)dg_input, BS, L1S);
 
             // self.ds= self.ds* self.state.l1_f[s_step]
-            element_wise_mul( (FP*)d_l1_s, (FP*)d_l1_s, (FP*)&l1_f[s_step], BS, L1S);
+            element_wise_mul( (FP*)d_l1_s, (FP*)d_l1_s, (FP*)&l1_f[s_step], BS, L1S, "backward_pass");
 
             if(h_step == s_step)
                 update_d_l1_h();
+
+            // printf("h_step, s_step: %d, %d", h_step, s_step);
+            // for(int i=0; i<10; i++)
+            //     printf("%.6f  ", l1_wi_grad[0][i]);
+            // printf("\n");
         }
     }
-
+    // printf("counter:%d\n", cnt);
 }
 
 void SGD(FP* param, FP* grad, int row, int col)
@@ -490,6 +520,14 @@ void SGD(FP* param, FP* grad, int row, int col)
             param[idx] -= (LR * grad[idx]);
             grad[idx] = 0;
         }
+
+
+    fptt_sub += row*col;
+    fptt_mul += row*col;
+
+    // index calculation
+    index_mul += row*col;
+    index_add += row*col;
 }
 
 void FPTT_SGD(FP* param, FP* grad, FP* rmean, FP* lbd, int row, int col)
@@ -511,6 +549,14 @@ void FPTT_SGD(FP* param, FP* grad, FP* rmean, FP* lbd, int row, int col)
             rmean[idx] = 0.5*(rmean[idx] + param[idx]) - (0.5/ALPHA)*lbd[idx];
             grad[idx] = 0;
         }
+
+    fptt_add += row*col*(2);
+    fptt_sub += row*col*(6);
+    fptt_mul += row*col*(5);
+
+    // index calculation
+    index_mul += row*col;
+    index_add += row*col;
 }
 
 void optimizer_and_zero_grad(int fptt_option)

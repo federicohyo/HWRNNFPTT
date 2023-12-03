@@ -34,8 +34,8 @@ typedef float FP;
 #ifdef MNIST_ONLINE_BY_PIXELS
     #define L0S (1)
     #undef K
-    #define K 28
-    #define TS 28   // time steps, i.e. the length of subsequences, NUM_OF_P/K
+    #define K 7
+    #define TS 112  // time steps, i.e. the length of subsequences, NUM_OF_P/K
 #endif
 
 

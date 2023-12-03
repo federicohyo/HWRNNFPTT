@@ -18,7 +18,9 @@ int main()
 	#ifdef MNIST_ONLINE_BY_PIXELS // specify K in ./include/headers.h
 		learning_mnist_online("streaming_by_pixels", "pre-trained", "calculate_regularizer");
 	#endif
-	
+
+	print_operation_count();
+
 	printf("Finished\n");
 	return 0;
 }

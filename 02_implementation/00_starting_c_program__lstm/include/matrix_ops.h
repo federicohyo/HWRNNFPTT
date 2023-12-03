@@ -4,6 +4,30 @@
 #include "headers.h"
 
 
+//--------------------------------------
+// Performance Counter
+// fp: forward path
+// bp: backward path
+//--------------------------------------
+extern int fp_add;
+extern int fp_sub;
+extern int fp_mul;
+extern int fp_div;
+
+extern int bp_add;
+extern int bp_sub;
+extern int bp_mul;
+extern int bp_div;
+
+extern int fptt_add;
+extern int fptt_sub;
+extern int fptt_mul;
+extern int fptt_div;
+
+extern int index_add;
+extern int index_sub;
+extern int index_mul;
+extern int index_div;
 /* --------------------------------------
             LINEAR FUNCTIONS
             matrix operations
@@ -29,7 +53,7 @@ void mat2vec_avr_sequeeze(FP* dst, FP* src, int src_row, int src_col);
             element-wise operations
 -------------------------------------- */
 // element-wise MUL/MAC (Multiply and Acummulate) on arrays/matrices of the same size 
-void element_wise_mul(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col);
+void element_wise_mul(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col, char which_pass[]);
 void element_wise_mac(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col);
 void element_wise_sub(FP* dst, FP* src1, FP* src2, int row, int col);
 
@@ -49,5 +73,5 @@ void sigmoid_on_matrix(FP* mat_out, FP* mat_in, int row, int col);
 // col should be the number of classifications
 void softmax(FP* dst, FP* src, int row, int col);
 
-
+void print_operation_count();
 #endif//_MATRIX_OPS_H_
