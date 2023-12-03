@@ -1,0 +1,5 @@
+These files are copied from the directory
+
+chipyard/generator/gemmini/software/gemmini-rocc-software
+
+so that they can be customized without influencing other test cases in the framework
