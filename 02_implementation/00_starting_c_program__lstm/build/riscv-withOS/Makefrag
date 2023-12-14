@@ -18,8 +18,8 @@ ENV_V = $(abs_top_srcdir)/riscv-tests/env/v
 
 .PHONY: all clean default
 
-default: all
-src_dir = .
+default:    all
+src_dir = $(abs_top_srcdir)/src
 
 clean:
 	rm -rf $(junk)
