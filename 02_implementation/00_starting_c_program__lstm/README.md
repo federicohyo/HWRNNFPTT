@@ -6,8 +6,8 @@ LSTM training of S-MNIST dataset, for x86/RISC-V platform. RISC-V platform has a
 ## Directory structure
 **data**:       contains input 5 samples to be used (data already normalized), network parameters (weights/biases) for different cases <br>
 **lib**:    Gemmini Libraries having handy functions to manipulate Gemmini Accelerator, e.g. matmul\_tiled\_auto <br>
-**src**:        source files etc <br>
-**build**:  build the application x86/RISC-V, more RISC-V can be baremetal or with OS. <br>
+**src**:        C source files etc <br>
+**build**:  build the application on x86/RISC-V, moreover RISC-V can be baremetal or with OS. <br>
 
 
 ## Cases included
