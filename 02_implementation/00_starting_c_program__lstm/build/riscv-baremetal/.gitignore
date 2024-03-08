@@ -2,3 +2,6 @@
 tmp/
 overlay/
 *.yaml
+run*
+scripts/
+*yaml

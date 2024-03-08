@@ -1,3 +1,8 @@
 *-linux
 *-pk
 tmp/
+*yaml
+overlay/
+make_bin
+output
+run*

@@ -9,11 +9,16 @@
 
 // libraries from RISC-V & Gemmini
 #ifdef PLATFORM_RV
-#include "include/gemmini.h"
-#include "encoding.h"
+    #include "include/gemmini.h"
+    #ifndef RVMULTICORE    
+        #include "encoding.h"
+    #else// multi-core riscv platform
+        #include <riscv-pk/encoding.h>
+        #include "util_multicore.h"
+    #endif
 #endif
 #ifdef PLATFORM_X86
-#include <time.h>
+    #include <time.h>
 #endif
 
 // ----------------------------------------------------------------
@@ -36,11 +41,24 @@
 #endif
 
 // ----------------------------------------------------------------
-// Choice: data type fp32/fp64/bf16
+// Choice: data type fp32/bf16
 // ----------------------------------------------------------------
-typedef float FP;
-// typedef double FP;
-// typedef unint16_t FP // Brain Float 16
+#ifdef FP32
+    typedef float FP;
+
+    #define f2hex(dat) (*(uint32_t*)&dat) // print float(fp32) in hexdecimal format 
+#endif
+
+#ifdef BF16
+    typedef uint16_t FP; // Brain Float 16
+    #define ELEM_T_IS_LOWPREC_FLOAT
+
+    #define u16_to_u32(dat) ((uint32_t)dat << 16)
+    #define u32_to_fp32(dat) (*(float*)&dat)
+
+    #define fp32_to_u32(dat) (*(uint32_t*)&dat)
+    #define fp32_to_u16(dat) ( (fp32_to_u32(dat)>>16) + ((fp32_to_u32(dat)&0x8000)==0x8000) ) // rounding
+#endif
 
 // ----------------------------------------------------------------
 // Choice: the debug information to be printed
@@ -86,8 +104,18 @@ typedef float FP;
 // ----------------------------------------------------------------
 // define the hyperparameters 
 // ----------------------------------------------------------------
-#define LR 0.01
-#define ALPHA 0.1
 
+#ifndef ELEM_T_IS_LOWPREC_FLOAT // if data type is float32
+    #define LR 0.01
+    #define ALPHA 0.1
+#else // if data type is bf16
+    #define LR      0x3c24  // 0.01 (approx.)
+    #define ALPHA   0x3dcd  // 0.1  (approx.)
+    #define P1      0x3f00  // 0.5
+    #define P2      0x40a0  // 0.5/ALPHA (0.5/0.1)
+    #define AVG     0x3e80  // 1/BS
+#endif
+
+#define M2O(array) ((FP*)array)
 
 #endif//_HEADERS_H_ 

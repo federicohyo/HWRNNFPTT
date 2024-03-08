@@ -2,6 +2,12 @@
 #define _MATRIX_OPS_H_
 
 #include "counters_timers.h"
+
+#ifdef ELEM_T_IS_LOWPREC_FLOAT
+#include "bf16_func.h"
+#endif
+
+
 /* --------------------------------------
             LINEAR FUNCTIONS
             matrix operations
@@ -24,7 +30,11 @@ size_t start = rdcycle();
         for(int j=0; j<b_col; j++)
         {
             for(int k=0; k<a_col; k++)
-                tmp += src_a[i*a_col + k] * src_b[j + k*b_col];
+                #ifndef ELEM_T_IS_LOWPREC_FLOAT
+                    tmp += src_a[i*a_col + k] * src_b[j + k*b_col];
+                #else
+                    tmp = bf16_add(tmp, bf16_mul(src_a[i*a_col + k], src_b[j + k*b_col]));
+                #endif
 
             dst[i*b_col + j] = tmp;
             tmp=0;
@@ -71,23 +81,33 @@ size_t start = rdcycle();
 
 #ifndef USE_GEMMINI_LIB 
     FP tmp=0;
+    
     if (a_col != b_col) // source matrix B is to be transposed
-    {
-        printf("[mat_mul_b_T]: Size not matched!\n"); exit(1);
-    }
+    { printf("[mat_mul_b_T]: Size not matched!\n"); exit(1); }
 
     for(int i=0; i<a_row; i++)
         for(int j=0; j<b_row; j++)
         {
             for(int k=0; k<a_col; k++)
-                tmp += src_a[i*a_col + k] * src_b[j*a_col + k];
+            {
+                #ifndef ELEM_T_IS_LOWPREC_FLOAT
+                    tmp += src_a[i*a_col + k] * src_b[j*a_col + k];
+                #else
+                    tmp = bf16_add(tmp, bf16_mul(src_a[i*a_col + k], src_b[j*a_col + k]) );
+                #endif
+            }
 
-            dst[i*b_row + j] = tmp;
+            // dst[i*b_row + j] = tmp;
+            // dst[i*b_row + j] += bias[j];
+            #ifndef ELEM_T_IS_LOWPREC_FLOAT
+                dst[i*b_row + j] = tmp + bias[j];
+            #else
+                dst[i*b_row + j] = bf16_add(tmp, bias[j]);
+            #endif
+            
             tmp = 0;
         }
-    for(int i=0; i<a_row; i++)
-        for(int j=0; j<b_row; j++)
-            dst[i*b_row + j] += bias[j];
+
 #endif
 
 #ifdef USE_GEMMINI_LIB 
@@ -122,7 +142,7 @@ index_add += a_row * b_row * (a_col*2 + 2);
 
 // matrix multiplication with the first source matrix to be transposed
 // the resulting matrix will be averaged over Batch Size
-void mat_mul_a_T_average(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, int b_row, int b_col, int n_samples)
+void mat_mul_a_T_average(FP* dst, FP* src_a, FP* src_b, int a_row, int a_col, int b_row, int b_col, float n_samples)
 {
 
 #ifdef PRINT_PERF
@@ -131,6 +151,7 @@ size_t start = rdcycle();
 
 #ifndef USE_GEMMINI_LIB 
     FP tmp = 0;
+    
     if (a_row != b_row) // source matrix A is to be transposed
     {
         printf("[mat_mul_a_T_average]: Size not matched!\n"); exit(1);
@@ -139,23 +160,35 @@ size_t start = rdcycle();
         for(int j=0; j<b_col; j++)
         {
             for(int k=0; k<a_row; k++)
-                tmp += src_a[i + k*a_col] * src_b[j + k*b_col];
-
-            dst[i*b_col + j] += tmp/n_samples;
+            {
+                #ifndef ELEM_T_IS_LOWPREC_FLOAT
+                    tmp += src_a[i + k*a_col] * src_b[j + k*b_col];
+                #else
+                    tmp = bf16_add(tmp, bf16_mul(src_a[i + k*a_col], src_b[j + k*b_col]) );
+                #endif
+            }
+            
+            #ifndef ELEM_T_IS_LOWPREC_FLOAT
+                dst[i*b_col + j] += tmp/n_samples;
+            #else
+                dst[i*b_col + j] = bf16_add(dst[i*b_col + j], bf16_div(tmp, fp32_to_u16(n_samples)) );
+            #endif
             tmp = 0;
         }
 #endif 
 
 #ifdef USE_GEMMINI_LIB 
-  tiled_matmul_auto(a_col, b_col, a_row,
-                    src_a, src_b, NULL, dst,
-                    a_col, b_col, b_col, b_col,
-                    MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-                    NO_ACTIVATION, 1/((FP)n_samples), 0, false,
-                    true, false,
-                    false, !FULL_BIAS_WIDTH,
-                    0,
-                    WMM);
+
+
+    tiled_matmul_auto(a_col, b_col, a_row,
+                        src_a, src_b, NULL, dst,
+                        a_col, b_col, b_col, b_col,
+                        MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+                        NO_ACTIVATION, 1/(n_samples), 0, false,
+                        true, false,
+                        false, !FULL_BIAS_WIDTH,
+                        0,
+                        WMM);
 #endif
 
 #ifdef PRINT_PERF
@@ -185,6 +218,7 @@ size_t start = rdcycle();
 #endif
 
     FP tmp=0;
+#ifndef ELEM_T_IS_LOWPREC_FLOAT // float point 32-bit
     for(int j=0; j<src_col; j++)
     {
         for(int i=0; i<src_row; i++)
@@ -193,6 +227,20 @@ size_t start = rdcycle();
         dst[j] += tmp/src_row;
         tmp=0;
     }
+#else // bf16 
+    float rows = src_row;
+
+    for(int j=0; j<src_col; j++)
+    {
+        for(int i=0; i<src_row; i++)
+            tmp = bf16_add(tmp, src[i*src_col + j]);
+
+        dst[j] = bf16_add(dst[j], bf16_div(tmp, fp32_to_u16(rows)));
+        tmp=0;
+    }
+#endif
+
+
 
 #ifdef PRINT_PERF
 size_t end = rdcycle();
@@ -214,104 +262,215 @@ index_add += src_col * src_row;
             LINEAR FUNCTIONS
             element-wise operations
 -------------------------------------- */
-// element-wise MUL/MAC (Multiply and Acummulate) on arrays/matrices of the same size 
+
+/* ------------------------------------
+            ELEMENT-WISE MUL
+-------------------------------------*/
+#ifndef RVMULTICORE
 void element_wise_mul(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col, char which_pass[])
+#else
+void element_wise_mul(int cid, FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col, char which_pass[])
+#endif
 {
 
 #ifdef PRINT_PERF
-size_t start = rdcycle();
+    #ifndef RVMULTICORE
+        size_t start = rdcycle();
+    #else
+        size_t start;
+        if(cid==0)
+            start = rdcycle();
+        // barrier(NCORES);
+    #endif
 #endif
 
-    int idx = 0;
-    for(int i=0; i<row; i++)
-        for(int j=0; j<col; j++)
-        {
-            idx = i*col + j;
-            mat_out[idx] = mat_in_a[idx] * mat_in_b[idx];
-        }
+#ifndef RVMULTICORE // x86 or single-core RV
+    for(int i=0; i<row*col; i++)
+#else // multi-core RV
+    for(int i=cid; i<row*col; i+=NCORES)
+#endif
+    {
+        #ifndef ELEM_T_IS_LOWPREC_FLOAT
+            mat_out[i] = mat_in_a[i] * mat_in_b[i];
+        #else
+            mat_out[i] = bf16_mul(mat_in_a[i] , mat_in_b[i]);
+        #endif
+    }
+
+#ifdef RVMULTICORE
+    barrier(NCORES);
+#endif
 
 #ifdef PRINT_PERF
-size_t end = rdcycle();
-acc_element_wise_mul += (end - start);
+    #ifndef RVMULTICORE
+        size_t end = rdcycle();
+        acc_element_wise_mul += (end - start);
+    #else
+        size_t end;
+        if(cid==0)
+        {
+            end = rdcycle();
+            acc_element_wise_mul += (end - start);
+        }
+        // barrier(NCORES);
+    #endif
 #endif
-
 
 #ifdef PRINT_COUNTER
-// non-functional: operation counter below
-if(strcmp(which_pass, "forward_pass")==0)
-    fp_mul += row*col;
-else if(strcmp(which_pass, "backward_pass")==0)
-    bp_mul += row*col;
-else  {
-    printf("[element_wise_mul] called by Unknown Pass, exit\n"); exit(1); }
-index_mul += row*col;
-index_add += row*col;
+    #ifdef RVMULTICORE
+    if(cid==0)
+    {
+    #endif
+        // non-functional: operation counter below
+        if(strcmp(which_pass, "forward_pass")==0)
+            fp_mul += row*col;
+        else if(strcmp(which_pass, "backward_pass")==0)
+            bp_mul += row*col;
+        else  {
+            printf("[element_wise_mul] called by Unknown Pass, exit\n"); exit(1); }
+        index_mul += row*col;
+        index_add += row*col;
+    #ifdef RVMULTICORE
+    }
+    #endif
 #endif
-
-
 }
 
+/* ------------------------------------
+            ELEMENT-WISE MAC
+-------------------------------------*/
+#ifndef RVMULTICORE
 void element_wise_mac(FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col)
+#else
+void element_wise_mac(int cid, FP* mat_out, FP* mat_in_a, FP* mat_in_b, int row, int col)
+#endif
 {
-
 #ifdef PRINT_PERF
-size_t start = rdcycle();
+    #ifndef RVMULTICORE
+        size_t start = rdcycle();
+    #else
+        size_t start;
+        if(cid==0)
+            start = rdcycle();
+        // barrier(NCORES);
+    #endif
 #endif
 
-    int idx = 0;
-    for(int i=0; i<row; i++)
-        for(int j=0; j<col; j++)
-        {
-            idx = i*col + j;
-            mat_out[idx] += mat_in_a[idx] * mat_in_b[idx];
-        }
+#ifndef RVMULTICORE // x86 or single-core RV
+    for(int i=0; i<row*col; i++)
+#else // multi-core RV
+    for(int i=cid; i<row*col; i+=NCORES)
+#endif
+    {
+        #ifndef ELEM_T_IS_LOWPREC_FLOAT
+        mat_out[i] += mat_in_a[i] * mat_in_b[i];
+        #else
+        mat_out[i] = bf16_add(mat_out[i], bf16_mul(mat_in_a[i], mat_in_b[i]) );
+        #endif
+    }
 
+#ifdef RVMULTICORE
+    barrier(NCORES);
+#endif
 
 #ifdef PRINT_PERF
-size_t end = rdcycle();
-acc_element_wise_mac += (end - start);
+    #ifndef RVMULTICORE
+        size_t end = rdcycle();
+        acc_element_wise_mac += (end - start);
+    #else
+        size_t end;
+        if(cid==0)
+        {
+            end = rdcycle();
+            acc_element_wise_mac += (end - start);
+        }
+        // barrier(NCORES);
+    #endif
 #endif
 
 #ifdef PRINT_COUNTER
-// non-functional: operation counter below
-fp_mul += row*col;
-fp_add += row*col;
-// workload for index calculation
-index_mul += row*col;
-index_add += row*col;
+    #ifdef RVMULTICORE
+    if(cid==0)
+    {
+    #endif
+        // non-functional: operation counter below
+        fp_mul += row*col;
+        fp_add += row*col;
+        // workload for index calculation
+        index_mul += row*col;
+        index_add += row*col;
+    #ifdef RVMULTICORE
+    }
+    #endif
 #endif
-
 }
 
+/* ------------------------------------
+            ELEMENT-WISE SUB 
+-------------------------------------*/
+#ifndef RVMULTICORE
 void element_wise_sub(FP* dst, FP* src1, FP* src2, int row, int col)
+#else
+void element_wise_sub(int cid, FP* dst, FP* src1, FP* src2, int row, int col)
+#endif
 {
-
 #ifdef PRINT_PERF
-size_t start = rdcycle();
+    #ifndef RVMULTICORE
+        size_t start = rdcycle();
+    #else
+        size_t start;
+        if(cid==0)
+            start = rdcycle();
+        // barrier(NCORES);
+    #endif
 #endif
 
-    int idx = 0;
-    for(int i=0; i<row; i++)
-        for(int j=0; j<col; j++)
-        {
-            idx = i*col + j;
-            dst[idx] = src1[idx] - src2[idx];
-        }
+#ifndef RVMULTICORE // x86 or single-core RV
+    for(int i=0; i<row*col; i++)
+#else // multi-core RV
+    for(int i=cid; i<row*col; i+=NCORES)
+#endif
+    {
+        #ifndef ELEM_T_IS_LOWPREC_FLOAT
+            dst[i] = src1[i] - src2[i];
+        #else
+            dst[i] = bf16_sub(src1[i], src2[i]);
+        #endif
+    }
 
+#ifdef RVMULTICORE
+    barrier(NCORES);
+#endif
 
 #ifdef PRINT_PERF
-size_t end = rdcycle();
-acc_element_wise_sub += (end - start);
+    #ifndef RVMULTICORE
+        size_t end = rdcycle();
+        acc_element_wise_sub += (end - start);
+    #else
+        size_t end;
+        if(cid==0)
+        {
+            end = rdcycle();
+            acc_element_wise_sub += (end - start);
+        }
+        // barrier(NCORES);
+    #endif
 #endif
 
 #ifdef PRINT_COUNTER
-// non-functional: operation counter below
-bp_sub += row*col;
-// workload for index calculation
-index_mul += row*col;
-index_add += row*col;
+    #ifdef RVMULTICORE
+    if(cid==0)
+    {
+    #endif
+        // non-functional: operation counter below
+        bp_sub += row*col;
+        // workload for index calculation
+        index_mul += row*col;
+        index_add += row*col;
+    #ifdef RVMULTICORE
+    }
+    #endif
 #endif
-
 }
 
 
@@ -319,20 +478,56 @@ index_add += row*col;
             NON-LINEAR FUNCTIONS
 -------------------------------------- */
 // float tanh function [tanhf] for the scalar is provided in  library <math.h> 
+
+#ifndef RVMULTICORE
 void tanhf_on_matrix(FP* mat_out, FP* mat_in, int row, int col)
+#else
+void tanhf_on_matrix(int cid, FP* mat_out, FP* mat_in, int row, int col)
+#endif
 {
 
 #ifdef PRINT_PERF
-size_t start = rdcycle();
+    #ifndef RVMULTICORE
+        size_t start = rdcycle();
+    #else
+        size_t start;
+        if(cid==0)
+            start = rdcycle();
+        // barrier(NCORES);
+    #endif
 #endif
 
-    for(int i=0; i<row; i++)
-        for(int j=0; j<col; j++)
-            mat_out[i*col + j] = tanhf(mat_in[i*col + j]);
+
+#ifndef RVMULTICORE // x86 or single-core RV
+    for(int i=0; i<row*col; i++)
+#else // multi-core RV
+    for(int i=cid; i<row*col; i+=NCORES)
+#endif
+    {
+        #ifndef ELEM_T_IS_LOWPREC_FLOAT
+        mat_out[i] = tanhf(mat_in[i]);
+        #else
+        mat_out[i] = bf16_tanh(mat_in[i]);
+        #endif
+    }
+#ifdef RVMULTICORE
+    barrier(NCORES);
+#endif
+
 
 #ifdef PRINT_PERF
-size_t end = rdcycle();
-acc_tanhf_on_matrix += (end - start);
+    #ifndef RVMULTICORE
+        size_t end = rdcycle();
+        acc_tanhf_on_matrix += (end - start);
+    #else
+        size_t end;
+        if(cid==0)
+        {
+            end = rdcycle();
+            acc_tanhf_on_matrix += (end - start);
+        }
+        // barrier(NCORES);
+    #endif
 #endif
 
 }
@@ -340,28 +535,63 @@ acc_tanhf_on_matrix += (end - start);
 // sigmoid function on scalar
 FP sigmoid(FP x) 
 {
-     FP result;
-     result = 1 / (1 + exp(-x));
-     return result;
+    //  FP result;
+    //  result = 1 / (1 + exp(-x));
+    //  return result;
+    return 1.0f/(1 + exp(-x));
 }
 
 // sigmoid function on matrix
+#ifndef RVMULTICORE
 void sigmoid_on_matrix(FP* mat_out, FP* mat_in, int row, int col)
+#else
+void sigmoid_on_matrix(int cid, FP* mat_out, FP* mat_in, int row, int col)
+#endif
 {
 
 #ifdef PRINT_PERF
-size_t start = rdcycle();
+    #ifndef RVMULTICORE
+        size_t start = rdcycle();
+    #else
+        size_t start;
+        if(cid==0)
+            start = rdcycle();
+        // barrier(NCORES);
+    #endif
 #endif
 
-    for(int i=0; i<row; i++)
-        for(int j=0; j<col; j++)
-            mat_out[i*col + j] = sigmoid(mat_in[i*col + j]);
+
+#ifndef RVMULTICORE // x86 or single-core RV
+    for(int i=0; i<row*col; i++)
+#else // multi-core RV
+    for(int i=cid; i<row*col; i+=NCORES)
+#endif
+    {
+        #ifndef ELEM_T_IS_LOWPREC_FLOAT
+        mat_out[i] = sigmoid(mat_in[i]);
+        #else
+        mat_out[i] = bf16_sigmoid(mat_in[i]);
+        #endif
+    }
+#ifdef RVMULTICORE
+    barrier(NCORES);
+#endif
+
 
 #ifdef PRINT_PERF
-size_t end = rdcycle();
-acc_sigmoid_on_matrix += (end - start);
+    #ifndef RVMULTICORE
+        size_t end = rdcycle();
+        acc_sigmoid_on_matrix += (end - start);
+    #else
+        size_t end;
+        if(cid==0)
+        {
+            end = rdcycle();
+            acc_sigmoid_on_matrix += (end - start);
+        }
+        // barrier(NCORES);
+    #endif
 #endif
-
 }
 
 // row should be the batch size
@@ -381,6 +611,7 @@ size_t start = rdcycle();
     FP max;
     FP sum;
 
+#ifndef ELEM_T_IS_LOWPREC_FLOAT
     for(int i=0; i<row; i++)
     {
         max = src[i*col + 0];
@@ -398,6 +629,25 @@ size_t start = rdcycle();
         for(int j=0; j<col; j++)
             dst[i*col + j] = tmp[j]/sum;
     }
+#else
+    for(int i=0; i<row; i++)
+    {
+        max = src[i*col + 0];
+        for(int j=1; j<col; j++)
+            if(bf16_greater(src[i*col + j], max) )
+                max = src[i*col + j];
+        
+        sum = 0;
+        for(int j=0; j<col; j++)
+        {
+            tmp[j] = bf16_exp(bf16_sub(src[i*col + j], max));
+            sum = bf16_add(sum, tmp[j]);
+        }
+
+        for(int j=0; j<col; j++)
+            dst[i*col + j] = bf16_div(tmp[j], sum);
+    }
+#endif
 
 #ifdef PRINT_PERF
 size_t end = rdcycle();

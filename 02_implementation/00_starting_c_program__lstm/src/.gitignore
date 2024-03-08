@@ -1,1 +1,7 @@
 try.c
+try2.c
+try3.c
+bf_op.c
+fp_acc.c
+mt-gemmini.c
+legacy.c

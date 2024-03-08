@@ -1,6 +1,9 @@
+K_VAL := 
+TS := 
+
 CC=gcc
 LIBS=-lm
-CFLAGS=-I$(IDIR) -Wall -D PLATFORM_X86
+CFLAGS=-I$(IDIR) -Wall -DPLATFORM_X86 -DFP32 -DK_VAL=$(K_VAL) -DTS=$(TS) -pg
 
 
 SDIR=../../src

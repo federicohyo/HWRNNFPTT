@@ -1,5 +1,5 @@
-#ifndef NETWORK_PARAMS_RV
-#define NETWORK_PARAMS_RV
+#ifndef _NETWORK_PARAMS_RV_H_
+#define _NETWORK_PARAMS_RV_H_
 
 // network_params_x86.h has more comments
 
@@ -55,7 +55,7 @@ static FP l2_b_grad[L2S] row_align(1);
 
 static FP samples[BS][NUM_OF_P] row_align(1);
 static FP xc[TS+1][BS][(L0S+L1S)] row_align(1);
-static FP label[BS][L2S] row_align(1);
+static FP labels[BS][L2S] row_align(1);
 
 static FP l1_i_input[TS+1][BS][L1S] row_align(1);
 static FP l1_f_input[TS+1][BS][L1S] row_align(1);
@@ -85,4 +85,4 @@ static FP df_input[BS][L1S] row_align(1);
 static FP dg_input[BS][L1S] row_align(1);
 static FP do_input[BS][L1S] row_align(1);
 
-#endif// NETWORK_PARAMS_RV
+#endif// _NETWORK_PARAMS_RV_H_

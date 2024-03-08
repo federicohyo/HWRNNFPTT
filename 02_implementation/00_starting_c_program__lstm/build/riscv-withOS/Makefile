@@ -12,13 +12,15 @@ tests = \
 
 K_VAL :=
 TS :=
+DTYPE := 
+GEMMINI_OP := DONTCARE
 
 tests_linux = $(tests:=-linux)
 tests_pk = $(tests:=-pk)
 
-lib_dir = $(abs_top_srcdir)/lib/riscv_gemmini/fp32
+lib_dir = $(abs_top_srcdir)/lib/riscv_gemmini/$(DTYPE)
 BENCH_COMMON = /home/yicheng/Desktop/ms_prj/chipyard/generators/gemmini/software/gemmini-rocc-tests/riscv-tests/benchmarks/common
-GEMMINI_HEADERS = $(lib_dir)/include/gemmini.h $(lib_dir)/include/gemmini_params.h $(lib_dir)/include/gemmini_testutils.h $(src_dir)/headers.h $(src_dir)/counters_timers.h $(src_dir)/network_params_riscv.h $(src_dir)/matrix_ops.h $(src_dir)/lstm.h $(src_dir)/caselist.h
+GEMMINI_HEADERS = $(lib_dir)/include/gemmini.h $(lib_dir)/include/gemmini_params.h $(lib_dir)/include/gemmini_testutils.h $(src_dir)/headers.h $(src_dir)/counters_timers.h $(src_dir)/network_params_riscv.h $(src_dir)/matrix_ops.h $(src_dir)/lstm.h $(src_dir)/caselist.h 
 
 
 CFLAGS := $(CFLAGS) \
@@ -42,14 +44,19 @@ CFLAGS := $(CFLAGS) \
 	-Wno-incompatible-pointer-types \
 	-I$(src_dir) \
     -I$(lib_dir) \
+    -I$(lib_dir)/include \
+    -I$(src_dir)/../data/c_headers \
     -DPLATFORM_RV=1 \
     -DK_VAL=$(K_VAL) \
     -DTS=$(TS) \
+    -D$(DTYPE) \
+    -D$(GEMMINI_OP) \
 
 CFLAGS_PK := \
 	$(CFLAGS) \
 	-static \
 	-DBAREMETAL=1 \
+
 
 all: $(tests_linux) $(tests_pk)
 

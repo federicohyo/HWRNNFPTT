@@ -1,6 +1,10 @@
 #ifndef NETWORK_PARAMS_X86
 #define NETWORK_PARAMS_X86
 
+FP tmp1[BS][(L0S+L1S)];
+FP tmp2[BS][(L0S+L1S)];
+FP tmp3[BS][(L0S+L1S)];
+FP tmp4[BS][(L0S+L1S)];
 //-------------------------------------
 // define: Parameters (weights & biases)
 //-------------------------------------
@@ -87,7 +91,7 @@ FP l2_b_grad[L2S] = {0};
 FP samples[BS][NUM_OF_P];
 FP xc[TS+1][BS][(L0S+L1S)] = {0};
 // the label/expected output
-FP label[BS][L2S] = {0};
+FP labels[BS][L2S] = {0};
 
 //--------------------------------------
 // intermediate network states

@@ -3,91 +3,59 @@
 
 #include "lstm.h"
 
-// not the focus of this project
-// being list here since it is the starting point
-// see README.md the definition of offline
-void learning_mnist_offline(char way_of_processing[], char dir_load_param[])
-{
 
-	char param_dir[50]; 
-
-
-	/* specify the directory to load weights*/ 
-	if(strcmp(way_of_processing,"streaming_by_rows")==0)
-	{
-		strcpy(param_dir, "../../data/params/28x128x10/");
-		strcat(param_dir, dir_load_param);
-		strcat(param_dir, "/");
-	}
-	else if(strcmp(way_of_processing,"streaming_by_pixels")==0)
-	{
-		strcpy(param_dir, "../../data/params/1x128x10/");
-		strcat(param_dir, dir_load_param);
-		strcat(param_dir, "/");
-	}
-	else
-	{ printf("No such way of processing\n"); exit(1); }
-
-
-#ifndef BM // specify this macro in the compilation command
-	/* load weights and input samples*/
-	load_all_param_and_rm(param_dir);
-	load_input_samples_to_xc("../../data/input/samples.txt");
-#endif
-
-	printf("\noriginal parameters (partly)\n");
-	print_params_partly();
-
-	forward(TS);
-	print_network_out(TS);
-	backward(TS, TS, 2);
-	optimizer_and_zero_grad(REGULARIZATION); 
-
-	printf("\nupdated parameters (partly)\n");
-	print_params_partly();
-}
 
 
 // see README.md the definition of offline
-void learning_mnist_online(char way_of_processing[], char dir_load_param[], int reg_option)
-{
-	char param_dir[50]; 
-  
-	/* specify the directory to load weights*/ 
-	if(strcmp(way_of_processing, "streaming_by_pixels")!=0)
-	{ printf("Training online is only expected to be with streaming by pixels\n"); exit(1); }
-	else
-	{
-		strcpy(param_dir, "../../data/params/1x128x10/");
-		strcat(param_dir, dir_load_param);
-		strcat(param_dir, "/");
-	}
-
-// load files from the external file system (linux)
-// only when the platform is not baremetal
-// specify this macro in the compilation command
-#ifndef BM 
-	printf("load parameters and data from files\n");
-	/* load weights and input samples*/
-	load_all_param_and_rm(param_dir);
-	// initialize_all_param_and_rm();
-	load_input_samples("../../data/input/samples.txt");
+#ifndef RVMULTICORE
+void learning_mnist_online(char dir_load_param[], int reg_option)
+#else
+void learning_mnist_online(int cid, char dir_load_param[], int reg_option)
 #endif
+{
+
+#ifdef RVMULTICORE 
+if(cid==0) // if multicore riscv, make sure the function is executed only on core 0
+{	
+#endif 
+	initialization(dir_load_param);
+#ifdef RVMULTICORE
+}// closing bracket 
+barrier(NCORES);
+#endif 
 
 #ifdef PRINT_DEBUG
-	printf("\noriginal parameters (partly)\n");
-	print_params_partly();
+	#ifndef RVMULTICORE
+		printf("\noriginal parameters (partly)\n");
+		print_params_partly();
+	#else
+		if(cid==0)
+		{
+			printf("\noriginal parameters (partly)\n");
+			print_params_partly();
+		}
+		else
+			asm("nop");
+		barrier(NCORES);
+	#endif
 #endif
-
 
 #ifdef PRINT_PERF
 	#ifdef PLATFORM_X86 
 		clock_t begin = clock();
 	#endif
 	#ifdef PLATFORM_RV
-		size_t sc = rdcycle();
+		#ifndef RVMULTICORE
+			size_t sc = rdcycle();
+		#else
+			static size_t sc;
+			if(cid==0)
+				sc = rdcycle();
+		#endif
 	#endif
 #endif
+
+
 
 	// core computation
 	// online formulation the original sequence is seen as K subsequences of TS (length)
@@ -95,13 +63,45 @@ void learning_mnist_online(char way_of_processing[], char dir_load_param[], int 
 	for(int i=0; i<K_VAL; i++)
 	{
 		#ifndef BM
-		printf("K: %d\n", i);
+			#ifdef RVMULTICORE// if multi-core, only core-0 needs to execute the code below 
+			if(cid==0)
+			#endif
+				printf("K: %d\n", i);
 		#endif
-		load_sub_seq_to_xc(i);
-		relay_network_states();
-		forward(TS);
-		backward(TS, TS, 2);
-		optimizer_and_zero_grad(reg_option); 
+				// printf("K: %d", i);
+
+		#ifdef RVMULTICORE// if multi-core, only core-0 needs to execute the code in between 
+			if(cid==0) 
+			{
+		#endif
+				load_sub_seq_to_xc(i);
+				relay_network_states();
+		#ifdef RVMULTICORE
+			}
+			barrier(NCORES);// sync all threads(cores)
+		#endif
+		
+		#ifndef RVMULTICORE
+			forward(TS);
+			backward(TS, TS, 2);
+			optimizer_and_zero_grad(reg_option); 
+			// cross_entropy();
+			
+			// print_network_out(1);
+			// if(i==0){
+			// 	print_network_out(1);
+			// 	// print_network_out(TS);
+			// }
+		#else
+			if(cid==0)
+				printf("a");
+			forward(cid, TS);
+			barrier(NCORES);// sync all threads(cores)
+			backward(cid, TS, TS, 2);
+			barrier(NCORES);// sync all threads(cores)
+			optimizer_and_zero_grad(cid, reg_option); 
+			barrier(NCORES);// sync all threads(cores)
+		#endif
 	}
 
 #ifdef PRINT_PERF
@@ -111,17 +111,35 @@ void learning_mnist_online(char way_of_processing[], char dir_load_param[], int 
 		printf("[clock] cycles taken: %ld, Latency: %f\n", (end - begin), time_spent);
 	#endif
 	#ifdef PLATFORM_RV
-		size_t ec = rdcycle();
-		size_t cycles = ec -sc;
-		printf("[rdcycle]: cycles taken: %ld, latency(in sec): %ld\n", cycles, (int)(((double)cycles)/4e7) );
+		#ifndef RVMULTICORE
+			size_t ec = rdcycle();
+			size_t cycles = ec-sc;
+			printf("[rdcycle]: cycles taken: %ld, latency(in sec): %ld\n", cycles, (int)(((double)cycles)/4e7) );
+		#else// if multi-core, only core-0 needs to execute the code in between 
+			static size_t ec, cycles;
+			if(cid==0)
+			{
+				ec = rdcycle();
+				cycles = ec-sc;
+				printf("[rdcycle]: cycles taken: %ld, latency(in sec): %ld\n", cycles, (int)(((double)cycles)/4e7) );
+			}
+			// barrier(NCORES);	// sync all threads(cores)
+		#endif
 	#endif
 #endif
 
 
 #ifdef PRINT_DEBUG
-	print_network_out(TS);
-	printf("\nupdated parameters (partly)\n");
-	print_params_partly();
+	#ifdef RVMULTICORE // if multi-core, only core-0 needs to execute the code in between 
+	if(cid==0)
+	{
+	#endif
+		cross_entropy();
+		printf("\nupdated parameters (partly)\n");
+		print_params_partly();
+	#ifdef RVMULTICORE// if multi-core, only core-0 needs to execute the code in between 
+	}
+	#endif
 #endif
 
 }
