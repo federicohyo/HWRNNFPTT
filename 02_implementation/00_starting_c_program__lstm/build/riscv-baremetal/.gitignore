@@ -2,7 +2,8 @@
 tmp/
 overlay/
 *.yaml
-run*
+run-*
 scripts/
 *yaml
 make_bin
+tmp*

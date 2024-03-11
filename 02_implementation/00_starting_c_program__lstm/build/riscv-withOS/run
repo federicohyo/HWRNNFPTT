@@ -1,0 +1,4 @@
+#!/bin/bash
+
+make clean; make K_VAL=28 TS=28 DTYPE=BF16 GEMMINI_OP=USE_GEMMINI_LIB; 
+spike --extension=gemmini pk test-pk  

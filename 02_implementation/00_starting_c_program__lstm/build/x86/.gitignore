@@ -1,6 +1,7 @@
 obj/
 log/
 output/
-bin
+./bin
 gmon.out
 *.txt
+run-*

@@ -1,11 +1,4 @@
 #!/bin/bash
 
-make clean; make K_VAL=1 TS=784; ./bin>./log/K-001.txt ; gprof ./bin gmon.out > ./output/K-001.txt; echo "finish-K=001"
-make clean; make K_VAL=2 TS=392; ./bin>./log/K-002.txt ; gprof ./bin gmon.out > ./output/K-002.txt; echo "finish-K=002"
-make clean; make K_VAL=7 TS=112; ./bin>./log/K-007.txt ; gprof ./bin gmon.out > ./output/K-007.txt; echo "finish-K=007"
-make clean; make K_VAL=14 TS=56; ./bin>./log/K-014.txt ; gprof ./bin gmon.out > ./output/K-014.txt; echo "finish-K=014"
-make clean; make K_VAL=28 TS=28; ./bin>./log/K-028.txt ; gprof ./bin gmon.out > ./output/K-028.txt; echo "finish-K=028"
-make clean; make K_VAL=56 TS=14; ./bin>./log/K-056.txt ; gprof ./bin gmon.out > ./output/K-056.txt; echo "finish-K=056"
-make clean; make K_VAL=112 TS=7; ./bin>./log/K-112.txt ; gprof ./bin gmon.out > ./output/K-112.txt; echo "finish-K=112"
-make clean; make K_VAL=392 TS=2; ./bin>./log/K-392.txt ; gprof ./bin gmon.out > ./output/K-392.txt; echo "finish-K=392"
-make clean; make K_VAL=784 TS=1; ./bin>./log/K-784.txt ; gprof ./bin gmon.out > ./output/K-784.txt; echo "finish-K=784"
+make clean; make K_VAL=28 TS=28
+./bin

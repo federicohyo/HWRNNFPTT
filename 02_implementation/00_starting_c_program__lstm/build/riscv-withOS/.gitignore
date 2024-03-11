@@ -5,4 +5,4 @@ tmp/
 overlay/
 make_bin
 output
-run*
+run-*
