@@ -1,20 +1,15 @@
-# Training script of LSTM for MNIST dataset
+# Workload Definition: cross-platform FPTT-based training of LSTM for S-MNIST dataset in small batch
 
 ## Introduction
-LSTM training of S-MNIST dataset, for x86/RISC-V platform. RISC-V platform has an optional MatMul Accelerator, namely Gemmini. 
+This workload can run on x86, or RISC-V platform to train LSTM for S-MNIST by FPTT algorithm.
 
 ## Directory structure
-**data**:       contains input 5 samples to be used (data already normalized), network parameters (weights/biases) for different cases <br>
-**lib**:    Gemmini Libraries having handy functions to manipulate Gemmini Accelerator, e.g. matmul\_tiled\_auto <br>
+**data**:       contains input 4 samples to be used (data already normalized) and the corresponding labels; network parameters (weights/biases) for different cases <br>
+**lib**:    includes RISC-V libraries and Gemmini (a ROCC, RISC-V Custom Co-processor for MatMul) libraries <br>
 **src**:        C source files etc <br>
-**build**:  build the application on x86/RISC-V, moreover RISC-V can be baremetal or with OS. <br>
+**build**:  contains directories to build the binaries for x86/RISC-V, moreover the target RISC-V flow has two versions (baremetal or with OS). <br>
 
 
-## Cases included
- - 1. MNIST streaming by rows, regular (offline) 
- - 2. MNIST streaming by pixels, regular (offline)
- - 3. MNIST streaming by pixels, online formulation, with optional regularization (in other words, **FPTT**)
-
-***offline*** means that backward path is not performed until the entire input sample is forwarded into the network 
-***online*** means interleaved forward and backward path of one input sample, e.g., a sample has 100 steps, we can do forward pass for 20 steps, then do the backward pass and weight update. Repeating this process 4 more times means the network performs the online formulation of training, by breaking the original input into 5 even pieces.
-
+**Attention**
+ - 1. All scripts are Linux-based <br>
+ - 2. To compile and run the worload on RISC-V platform, [Chipyard repository](https://github.com/ucb-bar/chipyard) should be correctly installed and set in your directory to activate RISC-V binary toolset, functional models, etc.
