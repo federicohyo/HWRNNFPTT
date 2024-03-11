@@ -18,24 +18,29 @@ typedef uint16_t elem_t;
 #define ELEM_T_IS_LOWPREC_FLOAT
 static const float elem_t_max = 3.3895313892515355E38;
 static const float elem_t_min = -3.3895313892515355E38;
-typedef float acc_t;
+// typedef float acc_t;
+typedef uint16_t acc_t;
 typedef double full_t;
 
 #define ELEM_T_IS_FLOAT
 #define ELEM_T_EXP_BITS 8
 #define ELEM_T_SIG_BITS 8
 #define ACC_T_EXP_BITS 8
-#define ACC_T_SIG_BITS 24
+// #define ACC_T_SIG_BITS 24
+#define ACC_T_SIG_BITS 8 
 typedef uint16_t elem_t_bits;
-typedef uint32_t acc_t_bits;
+// typedef uint32_t acc_t_bits;
+typedef uint16_t acc_t_bits;
 
 #define HAS_MVIN_SCALE
 typedef float scale_t;
 typedef uint32_t scale_t_bits;
 
 #define HAS_MVIN_ACC_SCALE
-typedef float scale_acc_t;
-typedef uint32_t scale_acc_t_bits;
+// typedef float scale_acc_t;
+// typedef uint32_t scale_acc_t_bits;
+typedef uint16_t scale_acc_t;
+typedef uint16_t scale_acc_t_bits;
 
 typedef float acc_scale_t;
 typedef uint32_t acc_scale_t_bits;

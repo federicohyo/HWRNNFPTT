@@ -5,3 +5,4 @@ overlay/
 run*
 scripts/
 *yaml
+make_bin

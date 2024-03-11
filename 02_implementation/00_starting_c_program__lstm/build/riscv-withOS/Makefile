@@ -8,7 +8,7 @@ RUNNER         := "spike --extension=gemmini "
 include $(abs_top_srcdir)/build/riscv-withOS/Makefrag
 
 tests = \
-	test \
+	try4 \
 
 K_VAL :=
 TS :=
@@ -60,7 +60,7 @@ CFLAGS_PK := \
 
 all: $(tests_linux) $(tests_pk)
 
-vpath %.c $(src_dir)
+vpath %.c $(src_dir)/../src-tmp
 
 %-linux: %.c $(GEMMINI_HEADERS)
 	$(CC_LINUX) $(CFLAGS) $< $(LFLAGS) -o $@

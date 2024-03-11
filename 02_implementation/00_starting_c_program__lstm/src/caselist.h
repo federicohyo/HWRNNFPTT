@@ -68,7 +68,7 @@ barrier(NCORES);
 			#endif
 				printf("K: %d\n", i);
 		#endif
-				// printf("K: %d", i);
+				printf("K: %d", i);
 
 		#ifdef RVMULTICORE// if multi-core, only core-0 needs to execute the code in between 
 			if(cid==0) 
