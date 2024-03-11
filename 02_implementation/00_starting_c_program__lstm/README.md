@@ -1,7 +1,7 @@
-# Workload Definition: cross-platform FPTT-based training of LSTM for S-MNIST dataset in small batch
+# Acceleration of FPTT-based training of LSTM for S-MNIST dataset on RISC-V SOC
 
 ## Introduction
-This workload can run on x86, or RISC-V platform to train LSTM for S-MNIST by FPTT algorithm.
+This workload defines accelerated training of LSTM for S-MNIST by FPTT algorithm on the RISC-V platform.
 
 ## Directory structure
 **data**:       contains input 4 samples to be used (data already normalized) and the corresponding labels; network parameters (weights/biases) for different cases <br>
@@ -10,6 +10,6 @@ This workload can run on x86, or RISC-V platform to train LSTM for S-MNIST by FP
 **build**:  contains directories to build the binaries for x86/RISC-V, moreover the target RISC-V flow has two versions (baremetal or with OS). <br>
 
 
-**Attention**
- - 1. All scripts are Linux-based <br>
- - 2. To compile and run the worload on RISC-V platform, [Chipyard repository](https://github.com/ucb-bar/chipyard) should be correctly installed and set in your directory to activate RISC-V binary toolset, functional models, etc.
+## Attention
+ - All scripts are Linux-based <br>
+ - To compile and run the worload on RISC-V platform, [Chipyard repository](https://github.com/ucb-bar/chipyard) should be correctly installed and set in your directory to activate RISC-V binary toolset, functional models, etc.
