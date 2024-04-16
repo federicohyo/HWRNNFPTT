@@ -343,8 +343,8 @@ void backward(int t, int trunc_h, int trunc_s)
 void backward(int cid, int t, int trunc_h, int trunc_s)
 #endif
 {
-    int h_ep; // earliest point(time step) to end up backtracking for l1_h
-    int s_ep; // earliest point(time step) to end up backtracking for l1_s
+    static int h_ep; // earliest point(time step) to end up backtracking for l1_h
+    static int s_ep; // earliest point(time step) to end up backtracking for l1_s
 
     #ifndef RVMULTICORE
         element_wise_sub( (FP*)d_l2_h, (FP*)&l2_o[t], (FP*)labels, BS, L2S);
@@ -357,13 +357,12 @@ void backward(int cid, int t, int trunc_h, int trunc_s)
         h_ep = (t-trunc_h>0) ? t-trunc_h : 0;
     #else
     element_wise_sub(cid, (FP*)d_l2_h, (FP*)&l2_o[t], (FP*)labels, BS, L2S);
+
+    mat2vec_avr_sequeeze(cid, (FP*)l2_b_grad, (FP*)d_l2_h, BS, L2S);
+
     if(cid==0) // only core0 do these
     {
-        // python code: self.param.l2_w_diff =  (np.dot(self.dl2_h.T, self.state.l1_h[t]))/self.n_samples
         mat_mul_a_T_average( (FP*)l2_w_grad, (FP*)d_l2_h, (FP*)&l1_h[t], BS, L2S, BS, L1S, BS);
-        // python code: self.param.l2_b_diff = (self.dl2_h.sum(axis=0))/self.n_samples # (10) = (200,10) 
-        mat2vec_avr_sequeeze( (FP*)l2_b_grad, (FP*)d_l2_h, BS, L2S);
-        // python code: self.dl1_h = np.dot(self.dl2_h, self.param.l2_w) # (200,128) = (200,10).(10, 128)
         mat_mul( (FP*)d_l1_h, (FP*)d_l2_h, (FP*)l2_w, BS, L2S, L2S, L1S);
         h_ep = (t-trunc_h>0) ? t-trunc_h : 0;
     }
@@ -389,18 +388,14 @@ void backward(int cid, int t, int trunc_h, int trunc_s)
             s_ep = (h_step-trunc_s>0) ? h_step-trunc_s : 0;
         #else
             find_ds(cid, h_step, BS, L1S);
-            // python: self.do = np.tanh(self.state.l1_s[h_step]) * self.dl1_h
             element_wise_mul(cid, (FP*)d_l1_o, (FP*)&l1_s_tanh[h_step], (FP*)d_l1_h, BS, L1S, "backward_pass");
-            // python: self.do_input = sigmoid_derivative(self.state.l1_o[h_step]) * self.do 
             find_d_l1_ifgo_input(cid, (FP*)do_input, (FP*)&l1_o[h_step], (FP*)d_l1_o, BS, L1S, 0);
+            
+            mat2vec_avr_sequeeze(cid, (FP*)l1_bo_grad, (FP*)do_input, BS, L1S);
+
             if(cid==0)
             {
-                // python: self.param.l1_wo_diff += (np.dot(self.do_input.T, self.state.xc[h_step])) /self.n_samples
                 mat_mul_a_T_average( (FP*)l1_wo_grad, (FP*)do_input, (FP*)&xc[h_step], BS, L1S, BS, (L1S+L0S), BS);
-                // python: self.param.l1_bo_diff += (self.do_input.sum(axis=0)) /self.n_samples # (128) = (200,128)
-                mat2vec_avr_sequeeze( (FP*)l1_bo_grad, (FP*)do_input, BS, L1S);
-                // dbg_l1_w_b_o(h_step);
-                // python: s_ep = 0 if trunc_s is None else max(0, h_step -trunc_s)
                 s_ep = (h_step-trunc_s>0) ? h_step-trunc_s : 0;
             }
             barrier(NCORES);
@@ -443,12 +438,12 @@ void backward(int cid, int t, int trunc_h, int trunc_s)
                     mat_mul_a_T_average( (FP*)l1_wi_grad, (FP*)di_input, (FP*)&xc[s_step], BS, L1S, BS, (L1S+L0S), BS);
                     mat_mul_a_T_average( (FP*)l1_wf_grad, (FP*)df_input, (FP*)&xc[s_step], BS, L1S, BS, (L1S+L0S), BS);
                     mat_mul_a_T_average( (FP*)l1_wg_grad, (FP*)dg_input, (FP*)&xc[s_step], BS, L1S, BS, (L1S+L0S), BS);
-                    mat2vec_avr_sequeeze( (FP*)l1_bi_grad, (FP*)di_input, BS, L1S);
-                    mat2vec_avr_sequeeze( (FP*)l1_bf_grad, (FP*)df_input, BS, L1S);
-                    mat2vec_avr_sequeeze( (FP*)l1_bg_grad, (FP*)dg_input, BS, L1S);
                 }
                 barrier(NCORES);
-                // self.ds= self.ds* self.state.l1_f[s_step]
+
+                mat2vec_avr_sequeeze(cid, (FP*)l1_bi_grad, (FP*)di_input, BS, L1S);
+                mat2vec_avr_sequeeze(cid, (FP*)l1_bf_grad, (FP*)df_input, BS, L1S);
+                mat2vec_avr_sequeeze(cid, (FP*)l1_bg_grad, (FP*)dg_input, BS, L1S);
                 element_wise_mul(cid, (FP*)d_l1_s, (FP*)d_l1_s, (FP*)&l1_f[s_step], BS, L1S, "backward_pass");
                 if(cid==0){
                     if(h_step == s_step)
@@ -699,7 +694,7 @@ void cross_entropy()
             #endif
         }
     
-    printf("Cross Entropy loss: %f (0x%X)\n", loss, *(uint32_t*)&loss);
+    printf("%f (0x%X)\n", loss, *(uint32_t*)&loss);
 }
 
 

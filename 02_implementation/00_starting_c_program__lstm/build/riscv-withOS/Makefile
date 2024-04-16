@@ -14,6 +14,7 @@ K_VAL :=
 TS :=
 DTYPE := 
 GEMMINI_OP := DONTCARE
+RVMC_OP := DONTCARE
 
 tests_linux = $(tests:=-linux)
 tests_pk = $(tests:=-pk)
@@ -51,6 +52,8 @@ CFLAGS := $(CFLAGS) \
     -DTS=$(TS) \
     -D$(DTYPE) \
     -D$(GEMMINI_OP) \
+    -D$(RVMC_OP) \
+    -DNCORES=$(NCORES) \
 
 CFLAGS_PK := \
 	$(CFLAGS) \

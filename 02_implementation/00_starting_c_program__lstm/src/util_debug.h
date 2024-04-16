@@ -85,7 +85,7 @@ void print_network_out(int t)
     {
         printf("Sample no. %d: ", i);
         for(int j=0; j<L2S; j++)
-            printf("%.8f  ", l1_i_input[t][i][j]);
+            printf("%.8f  %X", l1_i_input[t][i][j], f2hex(l1_i_input[t][i][j]));
         printf("\n");
     }
 
@@ -94,7 +94,7 @@ void print_network_out(int t)
     {
         printf("Sample no. %d: ", i);
         for(int j=0; j<L2S; j++)
-            printf("%.8f  ", l1_f_input[t][i][j]);
+            printf("%.8f  %X", l1_f_input[t][i][j], f2hex(l1_f_input[t][i][j]));
         printf("\n");
     }
 
@@ -103,7 +103,7 @@ void print_network_out(int t)
     {
         printf("Sample no. %d: ", i);
         for(int j=0; j<L2S; j++)
-            printf("%.8f  ", l1_g_input[t][i][j]);
+            printf("%.8f  %X", l1_g_input[t][i][j], f2hex(l1_g_input[t][i][j]));
         printf("\n");
     }
 
@@ -112,7 +112,7 @@ void print_network_out(int t)
     {
         printf("Sample no. %d: ", i);
         for(int j=0; j<L2S; j++)
-            printf("%.8f  ", l1_o_input[t][i][j]);
+            printf("%.8f  %X", l1_o_input[t][i][j], f2hex(l1_o_input[t][i][j]));
         printf("\n");
     }
 
@@ -121,7 +121,7 @@ void print_network_out(int t)
     {
         printf("Sample no. %d: ", i);
         for(int j=0; j<L2S; j++)
-            printf("%.8f  ", l1_h[t][i][j]);
+            printf("%.8f  %X", l1_h[t][i][j], f2hex(l1_h[t][i][j]));
         printf("\n");
     }
     printf("l2_h\n");
@@ -129,7 +129,7 @@ void print_network_out(int t)
     {
         printf("Sample no. %d: ", i);
         for(int j=0; j<L2S; j++)
-            printf("%.8f  ", l2_h[t][i][j]);
+            printf("%.8f  %X", l2_h[t][i][j], f2hex(l2_h[t][i][j]));
         printf("\n");
     }
 
@@ -138,7 +138,7 @@ void print_network_out(int t)
     {
         printf("Sample no. %d: ", i);
         for(int j=0; j<L2S; j++)
-            printf("%.8f  ", l2_o[t][i][j]);
+            printf("%.8f  %X", l2_o[t][i][j], f2hex(l2_o[t][i][j]));
         printf("\n");
     }
 }
@@ -254,27 +254,27 @@ void print_grad(int t)
 {
     printf("t: %d, d_l1_h\t", t);
     for(int i=0; i<10; i++)
-        printf("%.8f  ", d_l1_h[0][i]);
+        printf("%.8f  %X", d_l1_h[0][i], f2hex(d_l1_h[0][i]));
     printf("\n");
 
     printf("t: %d, d_l1_o\t", t);
     for(int i=0; i<10; i++)
-        printf("%.8f  ", d_l1_o[0][i]);
+        printf("%.8f  %X", d_l1_o[0][i], f2hex(d_l1_o[0][i]));
     printf("\n");
 
     printf("t: %d, do_input\t", t);
     for(int i=0; i<10; i++)
-        printf("%.8f  ", do_input[0][i]);
+        printf("%.8f  %X", do_input[0][i], f2hex(do_input[0][i]));
     printf("\n");
 
     printf("t: %d, l1_wo_grad\t", t);
     for(int i=0; i<10; i++)
-        printf("%.8f  ", l1_wo_grad[0][i]);
+        printf("%.8f  %X", l1_wo_grad[0][i], f2hex(l1_wo_grad[0][i]));
     printf("\n");
 
     printf("t: %d, l1_bo_grad\t", t);
     for(int i=0; i<10; i++)
-        printf("%.8f  ", l1_bo_grad[i]);
+        printf("%.8f  %X", l1_bo_grad[i], f2hex(l1_bo_grad[i]));
     printf("\n\n");
 }
 

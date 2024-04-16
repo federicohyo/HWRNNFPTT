@@ -5,3 +5,4 @@ bf_op.c
 fp_acc.c
 mt-gemmini.c
 legacy.c
+caselist-mcdbg.h

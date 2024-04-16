@@ -5,11 +5,29 @@
 #include <limits.h>
 
 #define XCUSTOM_ACC 3
-#define DIM 4
 #define ADDR_LEN 32
 #define BANK_NUM 4
-#define BANK_ROWS 4096 
-#define ACC_ROWS 4096
+
+// at Gemmini chisel source code [GemminiConfigs.scala]
+// see how to calculate the ACC/BANK ROWS
+#ifdef DIM_2X2
+    #define DIM 2
+    #define BANK_ROWS 8192 
+    #define ACC_ROWS 8192 
+#endif
+
+#ifdef DIM_4X4
+    #define DIM 4
+    #define BANK_ROWS 4096 
+    #define ACC_ROWS 4096
+#endif
+
+#ifdef DIM_8X8
+    #define DIM 8
+    #define BANK_ROWS 2048 
+    #define ACC_ROWS 2048 
+#endif
+
 #define MAX_BYTES 64
 #define MAX_BLOCK_LEN (MAX_BYTES/(DIM*2))
 #define MAX_BLOCK_LEN_ACC (MAX_BYTES/(DIM*4))
@@ -32,25 +50,30 @@ typedef uint16_t elem_t_bits;
 // typedef uint32_t acc_t_bits;
 typedef uint16_t acc_t_bits;
 
-#define HAS_MVIN_SCALE
-typedef float scale_t;
-typedef uint32_t scale_t_bits;
-
-#define HAS_MVIN_ACC_SCALE
+// #define HAS_MVIN_SCALE
+// typedef float scale_t;
+// typedef uint32_t scale_t_bits;
+// #define HAS_MVIN_ACC_SCALE
 // typedef float scale_acc_t;
 // typedef uint32_t scale_acc_t_bits;
+// typedef float acc_scale_t;
+// typedef uint32_t acc_scale_t_bits;
+
+#define HAS_MVIN_SCALE
+#define HAS_MVIN_ACC_SCALE
+typedef uint16_t scale_t;
+typedef uint16_t scale_t_bits;
 typedef uint16_t scale_acc_t;
 typedef uint16_t scale_acc_t_bits;
-
-typedef float acc_scale_t;
-typedef uint32_t acc_scale_t_bits;
+typedef uint16_t acc_scale_t;
+typedef uint16_t acc_scale_t_bits;
 
 #define row_align(blocks) __attribute__((aligned(blocks*DIM*sizeof(elem_t))))
 #define row_align_acc(blocks) __attribute__((aligned(blocks*DIM*sizeof(acc_t))))
 
-#define MVIN_SCALE_IDENTITY 1.0
+#define MVIN_SCALE_IDENTITY 0x3f80 //1.0
 
-#define ACC_SCALE_IDENTITY 1.0
+#define ACC_SCALE_IDENTITY 0x3f80 //1.0
 
 #define ROUNDING_RIGHT_SHIFT(x, shift) \
     ((x) / (1 << (shift)))
@@ -88,11 +111,12 @@ typedef uint32_t acc_scale_t_bits;
 
 #define ACC_SCALE_T_IS_FLOAT
 #define ACC_SCALE_EXP_BITS 8
-#define ACC_SCALE_SIG_BITS 24
+// #define ACC_SCALE_SIG_BITS 24 
+#define ACC_SCALE_SIG_BITS 8 
 
 #define ACC_READ_SMALL_WIDTH
 #define ACC_READ_FULL_WIDTH
 
-#define HAS_FIRST_LAYER_OPTIMIZATIONS
+// #define HAS_FIRST_LAYER_OPTIMIZATIONS
 
 #endif // GEMMINI_PARAMS_H

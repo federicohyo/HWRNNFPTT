@@ -3,7 +3,7 @@ tmp/
 overlay/
 *.yaml
 run-*
-scripts/
 *yaml
 make_bin
 tmp*
+output/

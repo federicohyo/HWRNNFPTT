@@ -13,12 +13,14 @@
     #ifndef RVMULTICORE    
         #include "encoding.h"
     #else// multi-core riscv platform
-        #include <riscv-pk/encoding.h>
+        // #include <riscv-pk/encoding.h>
+        #include "encoding.h"
         #include "util_multicore.h"
     #endif
 #endif
 #ifdef PLATFORM_X86
     #include <time.h>
+    #include <stdint.h>
 #endif
 
 // ----------------------------------------------------------------
@@ -52,13 +54,13 @@
 #ifdef BF16
     typedef uint16_t FP; // Brain Float 16
     #define ELEM_T_IS_LOWPREC_FLOAT
+#endif
 
     #define u16_to_u32(dat) ((uint32_t)dat << 16)
     #define u32_to_fp32(dat) (*(float*)&dat)
 
     #define fp32_to_u32(dat) (*(uint32_t*)&dat)
     #define fp32_to_u16(dat) ( (fp32_to_u32(dat)>>16) + ((fp32_to_u32(dat)&0x8000)==0x8000) ) // rounding
-#endif
 
 // ----------------------------------------------------------------
 // Choice: the debug information to be printed

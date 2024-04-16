@@ -8,7 +8,7 @@
 #define DIM 4
 #define ADDR_LEN 32
 #define BANK_NUM 4
-#define BANK_ROWS 2048 //8192
+#define BANK_ROWS 8192
 #define ACC_ROWS 4096
 #define MAX_BYTES 64
 #define MAX_BLOCK_LEN (MAX_BYTES/(DIM*4))

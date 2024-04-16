@@ -181,16 +181,30 @@ size_t start = rdcycle();
 
 #ifdef USE_GEMMINI_LIB 
 
+        float mmat_scale_fp32 = 1/(n_samples);
 
+    #ifndef ELEM_T_IS_LOWPREC_FLOAT
     tiled_matmul_auto(a_col, b_col, a_row,
                         src_a, src_b, NULL, dst,
                         a_col, b_col, b_col, b_col,
                         MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
-                        NO_ACTIVATION, 1/(n_samples), 0, false,
+                        NO_ACTIVATION, mmat_scale_fp32, 0, false,
                         true, false,
                         false, !FULL_BIAS_WIDTH,
                         0,
                         WMM);
+    #else
+    uint16_t mmat_scale_bf16 = fp32_to_u16(mmat_scale_fp32);
+    tiled_matmul_auto(a_col, b_col, a_row,
+                       src_a, src_b, NULL, dst,
+                       a_col, b_col, b_col, b_col,
+                       MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY, MVIN_SCALE_IDENTITY,
+                       NO_ACTIVATION, mmat_scale_bf16, 0, false,
+                       true, false,
+                       false, !FULL_BIAS_WIDTH,
+                       0,
+                       WMM);
+    #endif
 #endif
 
 #ifdef PRINT_PERF
@@ -212,50 +226,85 @@ index_add += a_col * b_col * (a_row*2 + 1);
 
 // convert a matrix to an array by sequeezing the first dimension
 // i.e. (200,10) -> (1,10)
+#ifndef RVMULTICORE
 void mat2vec_avr_sequeeze(FP* dst, FP* src, int src_row, int src_col)
+#else
+void mat2vec_avr_sequeeze(int cid, FP* dst, FP* src, int src_row, int src_col)
+#endif
 {
 
-#ifdef PRINT_PERF
-size_t start = rdcycle();
-#endif
-
     FP tmp=0;
-#ifndef ELEM_T_IS_LOWPREC_FLOAT // float point 32-bit
-    for(int j=0; j<src_col; j++)
-    {
-        for(int i=0; i<src_row; i++)
-            tmp += src[i*src_col + j];
-
-        dst[j] += tmp/src_row;
-        tmp=0;
-    }
-#else // bf16 
+#ifdef ELEM_T_IS_LOWPREC_FLOAT
     float rows = src_row;
+#endif
 
-    for(int j=0; j<src_col; j++)
-    {
-        for(int i=0; i<src_row; i++)
-            tmp = bf16_add(tmp, src[i*src_col + j]);
-
-        dst[j] = bf16_add(dst[j], bf16_div(tmp, fp32_to_u16(rows)));
-        tmp=0;
-    }
+#ifdef PRINT_PERF
+    #ifndef RVMULTICORE
+        size_t start = rdcycle();
+    #else
+        size_t start;
+        if(cid==0)
+            start = rdcycle();
+        // barrier(NCORES);
+    #endif
 #endif
 
 
+    #ifndef RVMULTICORE
+    for(int j=0; j<src_col; j++)
+    #else
+    for(int j=cid; j<src_col; j+=NCORES)
+    #endif
+    {
+
+        #ifndef ELEM_T_IS_LOWPREC_FLOAT
+            for(int i=0; i<src_row; i++)
+                tmp += src[i*src_col + j];
+            dst[j] += tmp/src_row;
+            tmp=0;
+        #else
+            for(int i=0; i<src_row; i++)
+                tmp = bf16_add(tmp, src[i*src_col + j]);
+
+            dst[j] = bf16_add(dst[j], bf16_div(tmp, fp32_to_u16(rows)));
+            tmp=0;
+        #endif
+
+    }
+
+#ifdef RVMULTICORE
+    barrier(NCORES);
+#endif
 
 #ifdef PRINT_PERF
-size_t end = rdcycle();
-acc_mat2vec_avr_sequeeze += (end - start);
+    #ifndef RVMULTICORE
+        size_t end = rdcycle();
+        acc_mat2vec_avr_sequeeze += (end - start);
+    #else
+        size_t end;
+        if(cid==0)
+        {
+            end = rdcycle();
+            acc_mat2vec_avr_sequeeze += (end - start);
+        }
+        // barrier(NCORES);
+    #endif
 #endif
 
 #ifdef PRINT_COUNTER
-// non-functional: operation counter below
-bp_add += src_col * (src_row - 1);
-bp_div += src_col;
-// workload for index calculation
-index_mul += src_col * src_row;
-index_add += src_col * src_row;
+    #ifdef RVMULTICORE
+    if(cid==0)
+    {
+    #endif
+        // non-functional: operation counter below
+        bp_add += src_col * (src_row - 1);
+        bp_div += src_col;
+        // workload for index calculation
+        index_mul += src_col * src_row;
+        index_add += src_col * src_row;
+    #ifdef RVMULTICORE
+    }
+    #endif
 #endif
 
 }
@@ -683,7 +732,7 @@ void print_function_acc_time()
 
     acc_total = acc_mat_mul + acc_mat_mul_b_T + acc_mat_mul_a_T + acc_mat2vec_avr_sequeeze + acc_element_wise_mac + acc_element_wise_mul + acc_element_wise_sub + acc_tanhf_on_matrix + acc_sigmoid_on_matrix + acc_softmax + acc_load_sub_seq_to_xc + acc_relay_network_states + acc_fill_l1_h_into_xc + acc_find_ds + acc_find_d_l1_ifgo_input + acc_update_d_l1_h + acc_SGD + acc_FPTT_SGD ;
     printf("accumulated execution time of functions: \n");
-    printf("MatMul (Type1-basic): \t%ld\n", (acc_mat_mul+acc_update_d_l1_h));
+    printf("MatMul (Type1-basic): \t%ld\n", acc_mat_mul);
     printf("MatMul (Type2-bT): \t%ld\n", (acc_mat_mul_b_T));
     printf("MatMul (Type3-aT): \t%ld\n", (acc_mat_mul_a_T));
     printf("conversion Mat2Vec: \t%ld\n", (acc_mat2vec_avr_sequeeze));

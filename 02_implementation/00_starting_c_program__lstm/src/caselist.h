@@ -21,7 +21,7 @@ if(cid==0) // if multicore riscv, make sure the function is executed only on cor
 	initialization(dir_load_param);
 #ifdef RVMULTICORE
 }// closing bracket 
-barrier(NCORES);
+// barrier(NCORES);
 #endif 
 
 #ifdef PRINT_DEBUG
@@ -34,9 +34,7 @@ barrier(NCORES);
 			printf("\noriginal parameters (partly)\n");
 			print_params_partly();
 		}
-		else
-			asm("nop");
-		barrier(NCORES);
+		// barrier(NCORES);
 	#endif
 #endif
 
@@ -48,9 +46,12 @@ barrier(NCORES);
 		#ifndef RVMULTICORE
 			size_t sc = rdcycle();
 		#else
-			static size_t sc;
+			size_t sc;
 			if(cid==0)
+			{
 				sc = rdcycle();
+			}
+			barrier(NCORES);// sync all threads(cores)
 		#endif
 	#endif
 #endif
@@ -62,13 +63,13 @@ barrier(NCORES);
 	// T = TS * K 
 	for(int i=0; i<K_VAL; i++)
 	{
-		#ifndef BM
+		// #ifndef BM
 			#ifdef RVMULTICORE// if multi-core, only core-0 needs to execute the code below 
-			if(cid==0)
+			if(cid==1)
 			#endif
 				printf("K: %d\n", i);
-		#endif
-				printf("K: %d", i);
+		// #endif
+				// printf("K: %d\n", i);
 
 		#ifdef RVMULTICORE// if multi-core, only core-0 needs to execute the code in between 
 			if(cid==0) 
@@ -93,14 +94,12 @@ barrier(NCORES);
 			// 	// print_network_out(TS);
 			// }
 		#else
-			if(cid==0)
-				printf("a");
 			forward(cid, TS);
-			barrier(NCORES);// sync all threads(cores)
+			// barrier(NCORES);// sync all threads(cores)
 			backward(cid, TS, TS, 2);
-			barrier(NCORES);// sync all threads(cores)
+			// barrier(NCORES);// sync all threads(cores)
 			optimizer_and_zero_grad(cid, reg_option); 
-			barrier(NCORES);// sync all threads(cores)
+			// barrier(NCORES);// sync all threads(cores)
 		#endif
 	}
 
@@ -116,7 +115,7 @@ barrier(NCORES);
 			size_t cycles = ec-sc;
 			printf("[rdcycle]: cycles taken: %ld, latency(in sec): %ld\n", cycles, (int)(((double)cycles)/4e7) );
 		#else// if multi-core, only core-0 needs to execute the code in between 
-			static size_t ec, cycles;
+			size_t ec, cycles;
 			if(cid==0)
 			{
 				ec = rdcycle();

@@ -15,7 +15,9 @@ K_VAL :=
 TS :=
 DTYPE := 
 GEMMINI_OP := DONTCARE
+GEMMINI_DIM := DIM_4X4
 RVMC_OP := DONTCARE 
+
 
 #################################
 # Flags
@@ -28,7 +30,7 @@ ARCHFLAGS = -march=$(ARCH) -mabi=$(ABI)
 
 CFLAGS  = -std=gnu99 -O2 -fno-common -fno-builtin-printf -I../../lib/riscv_gemmini/$(DTYPE) -I../../lib/riscv_gemmini/$(DTYPE)/include -I../../data/c_headers #-I../../src -I../../src-tmp
 CFLAGS += $(ARCHFLAGS)
-CFLAGS += -DPLATFORM_RV=1 -DBM=1 -DK_VAL=$(K_VAL) -DTS=$(TS) -D$(GEMMINI_OP) -D$(DTYPE) -D$(RVMC_OP) -DNCORES=$(NCORES)
+CFLAGS += -DPLATFORM_RV=1 -DBM=1 -DK_VAL=$(K_VAL) -DTS=$(TS) -D$(GEMMINI_OP) -D$(DTYPE) -D$(RVMC_OP) -DNCORES=$(NCORES) -D$(GEMMINI_DIM)
 LDFLAGS = -static
 
 include libgloss.mk
