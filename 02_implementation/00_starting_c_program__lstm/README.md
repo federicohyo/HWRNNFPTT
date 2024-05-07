@@ -10,6 +10,13 @@ This workload defines accelerated training of LSTM for S-MNIST by FPTT algorithm
 **build**:  contains directories to build the binaries for x86/RISC-V, moreover the target RISC-V flow has two versions (baremetal or with OS). <br>
 
 
+## Access to FPGA
+|  IP    |131.155.126.188 |
+| ------ | ------ |
+|username|vcu118-user         |
+|password|vcu118-user         |
+
+
 ## Prerequisites 
  - All scripts are Linux-based <br>
- - To compile and run the worload on RISC-V platform, [Chipyard repository](https://github.com/ucb-bar/chipyard) should be correctly installed and set in your directory to activate RISC-V binary toolset, functional models, etc.
+ - To compile and run the workload on RISC-V platform, use the FireSim and FPGA board, [Chipyard repository](https://github.com/ucb-bar/chipyard) should be correctly installed and set in your directory to activate RISC-V binary toolset, functional models, etc.
