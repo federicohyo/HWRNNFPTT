@@ -11,10 +11,10 @@ This workload defines accelerated training of LSTM for S-MNIST by FPTT algorithm
 
 
 ## Access to FPGA
-|  IP    |131.155.126.188 |
+|  IP    | 131.155.126.188 |
 | ------ | ------ |
-|username|vcu118-user         |
-|password|vcu118-user         |
+|username| vcu118-XXX         |
+|password| vcu118-XXX         |
 
 
 ## Prerequisites 
